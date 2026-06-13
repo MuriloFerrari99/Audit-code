@@ -1,0 +1,5 @@
+sinapi_code,state,period,unit,price,regime
+1234,PR,2026-05,sc,30.00,desonerado
+5678,PR,2026-05,m3,90.00,desonerado
+1234,SP,2026-05,sc,31.50,desonerado
+5678,SP,2026-05,m3,92.00,desonerado

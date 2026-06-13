@@ -1,0 +1,18 @@
+[
+  {
+    "id": 90001,
+    "totalValue": 4000.00,
+    "status": "approved",
+    "date": "2026-05-12T00:00:00",
+    "creditorId": 5001,
+    "buildingId": 7001
+  },
+  {
+    "id": 90002,
+    "totalValue": 80000.00,
+    "status": "approved",
+    "date": "2026-05-24T00:00:00",
+    "creditorId": 5001,
+    "buildingId": 7001
+  }
+]
