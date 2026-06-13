@@ -6,15 +6,23 @@ import uuid
 
 from fastapi import FastAPI, Request
 
+from app.api.routes_auth import router as auth_router
+from app.api.routes_findings import router as findings_router
 from app.core.config import get_settings
 from app.core.db import db_healthy
 from app.core.logging import configure_logging, get_logger, request_id_var
+from app.rules.builtin import register_builtin_rules
 
 settings = get_settings()
 configure_logging(settings.log_level)
 log = get_logger("api")
 
+# Registra as 6 regras do MVP no registry (idempotente por processo).
+register_builtin_rules()
+
 app = FastAPI(title="Auditoria de Gastos — API", version="0.1.0")
+app.include_router(auth_router)
+app.include_router(findings_router)
 
 
 @app.middleware("http")

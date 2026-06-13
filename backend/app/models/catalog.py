@@ -13,7 +13,7 @@ from __future__ import annotations
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Float, String
+from sqlalchemy import Float, Numeric, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -49,3 +49,20 @@ class ItemMapping(Base, TenantScopedMixin):
 
 
 TENANT_SCOPED.add("item_mapping")
+
+
+class SinapiReference(Base):
+    """Referência pública de preço (Camada 1). Sem tenant_id — pública/compartilhável.
+
+    Carregada pelo ETL de SINAPI (T-070), por código/UF/período.
+    """
+
+    __tablename__ = "sinapi_reference"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    sinapi_code: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    state: Mapped[str] = mapped_column(String(2), nullable=False)  # UF
+    period: Mapped[str] = mapped_column(String(7), nullable=False)  # YYYY-MM
+    unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    price: Mapped[float | None] = mapped_column(Numeric(18, 4), nullable=True)
+    regime: Mapped[str] = mapped_column(String(20), default="desonerado", nullable=False)
