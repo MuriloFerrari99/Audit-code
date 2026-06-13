@@ -1,0 +1,43 @@
+# Segredos — NUNCA versionar (ver docs/seguranca-lgpd.md §6)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+secrets/
+certs/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+.next/
+out/
+*.log
+
+# Dados locais
+*.sqlite3
+data/
+minio-data/
+pgdata/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp

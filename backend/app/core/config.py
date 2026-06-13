@@ -1,0 +1,54 @@
+"""Configuração tipada da aplicação (T-020).
+
+Lê de variáveis de ambiente / .env. Segredos sensíveis NÃO são lidos aqui
+diretamente no código de negócio — passam pelo SecretProvider (ADR-11).
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    # App
+    app_env: str = "local"
+    app_secret_key: str = "dev-only-change-me"
+    log_level: str = "INFO"
+    business_timezone: str = "America/Sao_Paulo"
+
+    # Banco
+    database_url: str = "postgresql+psycopg://audit:audit@localhost:5432/audit"
+
+    # Redis
+    redis_url: str = "redis://localhost:6379/0"
+
+    # Object store
+    s3_endpoint: str | None = None
+    s3_access_key: str | None = None
+    s3_secret_key: str | None = None
+    s3_bucket: str = "audit-evidence"
+
+    # Secret provider (ADR-11)
+    secret_provider: str = "env"
+
+    # LLM (ADR-12) — valores reais via SecretProvider
+    llm_model_strong: str = "claude-opus-4-8"
+    llm_model_cheap: str = "claude-haiku-4-5-20251001"
+    llm_tenant_token_budget: int = 2_000_000
+
+    # Embeddings
+    embeddings_provider: str | None = None
+    embeddings_model: str | None = None
+
+    @property
+    def is_local(self) -> bool:
+        return self.app_env == "local"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
