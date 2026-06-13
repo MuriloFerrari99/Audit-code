@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import CurrentUser, get_current_user, get_tenant_db, require_role
 from app.api.schemas import EvidenceOut, FindingOut, ReviewIn
 from app.core.errors import DomainError
+from app.core.metrics import findings_emitted_total, rule_runs_total
 from app.findings.service import get_evidence, list_findings, review_finding
 from app.models.findings import Role
 from app.rules.engine import run_all
@@ -40,6 +41,10 @@ def trigger_rules(
     """Roda todas as regras para o tenant atual (MVP: disparo manual; em prod o
     worker dispara via outbox)."""
     summary = run_all(db, user.tenant_id)
+    rule_runs_total.labels(tenant=user.tenant_id).inc()
+    for rule_id, n in summary.items():
+        if n:
+            findings_emitted_total.labels(rule_id=rule_id).inc(n)
     return {"tenant_id": user.tenant_id, "found": summary}
 
 

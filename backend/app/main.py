@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api.routes_auth import router as auth_router
 from app.api.routes_findings import router as findings_router
+from app.api.routes_reports import router as reports_router
 from app.core.config import get_settings
 from app.core.db import db_healthy
 from app.core.logging import configure_logging, get_logger, request_id_var
@@ -23,6 +25,12 @@ register_builtin_rules()
 app = FastAPI(title="Auditoria de Gastos — API", version="0.1.0")
 app.include_router(auth_router)
 app.include_router(findings_router)
+app.include_router(reports_router)
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.middleware("http")
