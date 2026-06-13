@@ -39,7 +39,12 @@ class TimestampMixin:
 
 
 class TenantScopedMixin(TimestampMixin):
-    """Campos comuns a toda entidade de dado de cliente (modelo-dados.md §5)."""
+    """Campos comuns a toda entidade de dado de cliente (modelo-dados.md §5).
+
+    O nome da tabela deve ser registrado em TENANT_SCOPED (explicitamente, no
+    módulo do modelo) para receber policy RLS na migração. Evitamos
+    __init_subclass__ por interação frágil com o DeclarativeBase.
+    """
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
@@ -47,12 +52,6 @@ class TenantScopedMixin(TimestampMixin):
     # Abstração país/vertical (latam-readiness.md) — só BR/BRL hoje.
     country_code: Mapped[str] = mapped_column(String(2), default="BR", nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="BRL", nullable=False)
-
-    def __init_subclass__(cls, **kw):
-        super().__init_subclass__(**kw)
-        tablename = getattr(cls, "__tablename__", None)
-        if tablename:
-            TENANT_SCOPED.add(tablename)
 
 
 class SourcedMixin:
