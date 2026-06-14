@@ -17,7 +17,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
+from app.core.secrets import get_secret_provider
 from app.core.timeutils import now_utc
+from app.integrity.sanctions import fetch_sanctions
 from app.models.integrity import Counterparty
 
 log = get_logger("integrity")
@@ -102,7 +104,12 @@ def check(session: Session, cnpj_raw: str) -> Counterparty | None:
     cp.data_abertura = data.get("data_abertura")
     cp.cnae = data.get("cnae")
     cp.qsa = data.get("qsa")
-    # sancoes: ligado quando houver chave CEIS/CNEP. Não tocar => None (= não verificado p/ sanção).
+    # sanções (CEIS/CNEP): None = não verificado; [] = nenhuma; [..] = sancionado.
+    # Sem chave, fetch_sanctions devolve None -> NÃO inferimos "limpo".
+    api_key = get_secret_provider().get_optional("portal/transparencia/api_key")
+    sanc = fetch_sanctions(cnpj, api_key)
+    if sanc is not None:
+        cp.sancoes = sanc
     cp.status = status
     cp.source = "brasilapi"
     cp.checked_at = now_utc()

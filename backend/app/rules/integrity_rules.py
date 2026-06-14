@@ -55,6 +55,39 @@ def _source_snap(cp: Counterparty) -> dict:
     return {"source": cp.source or "brasilapi", "checked_at": str(cp.checked_at)}
 
 
+# --------------------------------------------------------------------------- I1
+class SanctionedSupplierRule:
+    id = "I1"
+    version = 1
+    dimension = 4
+    severity_default = Severity.CRITICAL
+    default_params: dict = {}
+
+    def evaluate(self, session: Session, ctx: RuleContext) -> list[FindingDraft]:
+        drafts: list[FindingDraft] = []
+        creditors = _creditors_with_cnpj(session)
+        cps = _counterparties(session, [only_digits(c.cnpj_cpf) for c in creditors])
+        spend = _spend_by_creditor(session)
+        for c in creditors:
+            cp = cps.get(only_digits(c.cnpj_cpf))
+            if cp is None or not cp.sancoes:  # None/[] => não sancionado/não verificado
+                continue
+            tipos = ", ".join(
+                f"{s.get('fonte')}:{s.get('tipo') or '?'}" for s in cp.sancoes[:3]
+            )
+            drafts.append(FindingDraft(
+                rule_id=self.id, rule_version=self.version,
+                dedup_key=dedup_key(self.id, c.id),
+                severity=self.severity_default.value,
+                exposed_amount=Money.of(spend.get(str(c.id), D(0))),
+                title=f"Fornecedor com sanção ({tipos}): {c.name}",
+                evidence=[EvidenceDraft("counterparty", "sancao", cp.cnpj,
+                                        f"{c.name} — sanções: {cp.sancoes} (fonte {cp.source}, {cp.checked_at})")],
+                reference_snapshot=_source_snap(cp),
+            ))
+        return drafts
+
+
 # --------------------------------------------------------------------------- I2
 class CnpjNotActiveRule:
     id = "I2"
@@ -207,6 +240,7 @@ class UnverifiedSupplierRule:
 
 
 def register_integrity_rules() -> None:
-    for rule in (CnpjNotActiveRule(), RecentHighValueSupplierRule(),
-                 CommonPartnerRule(), UnverifiedSupplierRule()):
+    for rule in (SanctionedSupplierRule(), CnpjNotActiveRule(),
+                 RecentHighValueSupplierRule(), CommonPartnerRule(),
+                 UnverifiedSupplierRule()):
         register(rule)

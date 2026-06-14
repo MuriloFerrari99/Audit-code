@@ -45,6 +45,7 @@ class EnvSecretProvider(_Base):
     _DEV_FALLBACK = {
         "llm/anthropic/api_key": "ANTHROPIC_API_KEY",
         "embeddings/api_key": "EMBEDDINGS_API_KEY",
+        "portal/transparencia/api_key": "PORTAL_TRANSPARENCIA_KEY",
     }
     _SIENGE_RE = re.compile(r"^tenant/[^/]+/sienge/(subdomain|user|password)$")
 
