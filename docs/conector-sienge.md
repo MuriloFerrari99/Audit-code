@@ -101,6 +101,41 @@ class SourceConnector(Protocol):
 
 - Sienge é a primeira implementação. NF-e, Open Finance, CGU/Receita serão outras — **mesma interface**, garantindo que adicionar fonte/país = novo plugin, não rewrite (ver [latam-readiness.md](./latam-readiness.md)).
 
+## 8b. Mapeamento real — validado contra a API da Alumbra (2026-06)
+
+> Resultado da sondagem read-only contra `https://api.sienge.com.br/alumbra/public/api/v1`
+> (auth Basic OK, HTTP 200). Substitui o esqueleto onde indicado.
+
+**Comportamentos reais importantes (não estavam no esqueleto):**
+- `bills` e `purchase-quotations` (bulk) **exigem `startDate`/`endDate`** — sync por janela de data.
+- `purchase-invoices/deliveries-attended` é **dirigido por chave** (`purchaseOrderId` | `billId` | `sequentialNumber`), não lista livre.
+- `purchase-requests` **não suporta GET de coleção** (405) — só por id/escrita. Para o MVP é dispensável (5/6 regras não dependem dele).
+- `building-cost-estimations` (do brief) **não existe nesta API** (404). O orçamento/custos virá de outro recurso — `cost-databases` existe (catálogo de bases de custo). **Lacuna a resolver** (necessário só para R4 estouro de quantidade).
+- Endpoint **bulk-data** confirmado: `…/public/api/bulk-data/v1/purchase-quotations`.
+
+**Campos reais por entidade (chaves observadas):**
+
+| Canônico | Endpoint | Campo real |
+|----------|----------|-----------|
+| `creditor.name` | `/creditors` | `name` (tradeName, cnpj, cpf, active) |
+| `purchase_order.total` | `/purchase-orders` | `totalAmount` |
+| `purchase_order.ordered_at` | idem | `date` (e `createdAt`/`modifiedAt`/`authorizedAt`) |
+| `purchase_order.status` | idem | `status` (+`authorized`, `consistent`) |
+| `purchase_order.creditor` | idem | `supplierId` |
+| `purchase_order.project` | idem | `buildingId` |
+| (autorização/alçada) | idem | `authorized`, `authorizedAt`; valor via `/purchase-orders/{id}/totalization` |
+| `purchase_order_item.*` | `/purchase-orders/{id}/items` | `unitPrice`, `quantity`, `netPrice`, `resourceId`/`resourceCode`/`resourceDescription`, `unitOfMeasure`, `purchaseQuotations` (aninhado) |
+| `bill.amount` | `/bills` (datas) | `totalInvoiceAmount` |
+| `bill.creditor` | idem | `creditorId` (`debtorId`, `documentNumber`, `issueDate`, `installmentsNumber`, `status`) |
+| `quotation.*` | bulk `/purchase-quotations` (datas) | `purchaseQuotationId`, `purchaseQuotationDate`, `purchaseQuotationItems`[], `purchaseQuotationSuppliers`[], `responseDeadline` |
+
+**Watermark incremental:** usar `modifiedAt`/`lastModificationDate`/`lastModification` (existem nos payloads).
+
+**Lacunas abertas (precisam de mais descoberta/decisão):**
+1. **Orçamento (R4):** achar o recurso correto de custo unitário por obra (provável via `cost-databases` + sub-recurso, ou outro módulo).
+2. **`deliveries-attended`:** obter um pedido com entrega para fixar o shape (amostras testadas vieram vazias).
+3. **`purchase-requests`:** sem listagem; confirmar que fica fora do MVP.
+
 ## 8. Tratamento de erros de dado
 
 - **Registro inconsistente** (FK não resolve, campo obrigatório ausente): vai para uma **dead-letter** por tenant com motivo; não derruba o batch; é revisável.

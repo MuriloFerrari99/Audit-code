@@ -1,18 +1,26 @@
 [
   {
     "id": 90001,
-    "totalValue": 4000.00,
-    "status": "approved",
-    "date": "2026-05-12T00:00:00",
-    "creditorId": 5001,
-    "buildingId": 7001
+    "formattedPurchaseOrderId": "90001",
+    "totalAmount": 4000.0,
+    "status": "PENDING",
+    "authorized": true,
+    "date": "2026-05-12",
+    "supplierId": 5001,
+    "buildingId": 7001,
+    "createdAt": "2026-05-12T09:00:00-03:00",
+    "modifiedAt": "2026-05-12T09:00:00-03:00"
   },
   {
     "id": 90002,
-    "totalValue": 80000.00,
-    "status": "approved",
-    "date": "2026-05-24T00:00:00",
-    "creditorId": 5001,
-    "buildingId": 7001
+    "formattedPurchaseOrderId": "90002",
+    "totalAmount": 80000.0,
+    "status": "APPROVED",
+    "authorized": true,
+    "date": "2026-05-24",
+    "supplierId": 5001,
+    "buildingId": 7001,
+    "createdAt": "2026-05-24T10:00:00-03:00",
+    "modifiedAt": "2026-05-24T10:00:00-03:00"
   }
 ]

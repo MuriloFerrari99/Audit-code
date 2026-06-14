@@ -1,17 +1,21 @@
 """Conector Sienge (T-063..T-066) — SOMENTE LEITURA.
 
-Auth Basic por subdomínio, via SecretProvider (ADR-11). O pull ao vivo precisa
-das credenciais reais (Q1/Q7); até lá, em modo dev/teste, lê de fixtures
-sanitizadas (ADR-13) para exercitar paginação/normalização sem credencial.
+Auth Basic por subdomínio, via SecretProvider (ADR-11). Validado contra a API
+real da Alumbra (ver docs/conector-sienge.md §8b). Sem credencial, cai em modo
+fixtures (ADR-13).
 
-O mapa de endpoints segue docs/conector-sienge.md §3. O mapeamento campo a campo
-(normalize) é o esqueleto a ser fixado contra a resposta real no onboarding.
+Comportamentos reais tratados aqui:
+- `bills` e bulk `purchase-quotations` exigem janela de data (startDate/endDate).
+- bulk-data fica em `/public/api/bulk-data/v1`.
+- itens do pedido são sub-recurso: `/purchase-orders/{id}/items`.
 """
 
 from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from app.connectors.base import (
@@ -30,16 +34,25 @@ from app.core.timeutils import now_utc, to_utc
 log = get_logger("connector.sienge")
 
 FIXTURES = Path(__file__).parent / "fixtures"
+HOST = "https://api.sienge.com.br"
+BACKFILL_DAYS = 730  # janela default de carga inicial
 
-# Mapa entidade -> endpoint (conector-sienge.md §3). REST/Bulk indicado.
-ENDPOINTS: dict[EntityKind, str] = {
-    EntityKind.CREDITOR: "/creditors",
-    EntityKind.BUDGET_ITEM: "/building-cost-estimations",
-    EntityKind.QUOTATION: "/bulk-data/v1/purchase-quotations",
-    EntityKind.PURCHASE_REQUEST: "/purchase-requests",
-    EntityKind.PURCHASE_ORDER: "/purchase-orders",
-    EntityKind.INVOICE: "/purchase-invoices/deliveries-attended",
-    EntityKind.BILL: "/bills",
+
+@dataclass
+class EndpointSpec:
+    path: str  # relativo após a base de versão
+    bulk: bool = False
+    needs_date: bool = False
+    list_key: str = "results"
+
+
+# Apenas os endpoints validados na API real. purchase_request (sem GET de
+# coleção) e budget/orçamento (recurso a definir) ficam fora do MVP — ver §8b.
+ENDPOINTS: dict[EntityKind, EndpointSpec] = {
+    EntityKind.CREDITOR: EndpointSpec("/creditors"),
+    EntityKind.PURCHASE_ORDER: EndpointSpec("/purchase-orders"),
+    EntityKind.BILL: EndpointSpec("/bills", needs_date=True),
+    EntityKind.QUOTATION: EndpointSpec("/purchase-quotations", bulk=True, needs_date=True, list_key="data"),
 }
 
 
@@ -51,24 +64,25 @@ class SiengeConnector:
         self.tenant_id = tenant_id
         self._secrets = secrets
         self._client: ResilientClient | None = None
-        # Sem credencial -> modo fixtures (dev/teste).
+        self._sub: str | None = None
         self._use_fixtures = use_fixtures if use_fixtures is not None else not self._has_creds()
 
-    # --- credenciais -------------------------------------------------------
     def _has_creds(self) -> bool:
         return self._secrets.get_optional(f"tenant/{self.tenant_id}/sienge/subdomain") is not None
 
     def authenticate(self) -> None:
         if self._use_fixtures:
             return
-        sub = self._secrets.get(f"tenant/{self.tenant_id}/sienge/subdomain")
+        self._sub = self._secrets.get(f"tenant/{self.tenant_id}/sienge/subdomain")
         user = self._secrets.get(f"tenant/{self.tenant_id}/sienge/user")
         pwd = self._secrets.get(f"tenant/{self.tenant_id}/sienge/password")
-        base = f"https://api.sienge.com.br/{sub}/public/api/v1"
-        bucket = TokenBucket(get_settings().redis_url, rate_per_sec=5.0, burst=10)
-        self._client = ResilientClient(base, (user, pwd), bucket, tenant_key=self.tenant_id)
+        bucket = TokenBucket(get_settings().redis_url, rate_per_sec=2.5, burst=5)
+        self._client = ResilientClient(HOST, (user, pwd), bucket, tenant_key=self.tenant_id)
 
-    # --- contrato ----------------------------------------------------------
+    def _base(self, spec: EndpointSpec) -> str:
+        ver = "bulk-data/v1" if spec.bulk else "v1"
+        return f"/{self._sub}/public/api/{ver}{spec.path}"
+
     def list_entities(self) -> list[EntityKind]:
         return list(ENDPOINTS.keys())
 
@@ -85,23 +99,42 @@ class SiengeConnector:
         for row in json.loads(path.read_text()):
             yield RawRecord(entity=entity, source_external_id=str(row.get("id")), payload=row)
 
+    def _date_window(self, cursor: PullCursor) -> dict:
+        end = now_utc()
+        start = cursor.since or (end - timedelta(days=BACKFILL_DAYS))
+        return {"startDate": start.strftime("%Y-%m-%d"), "endDate": end.strftime("%Y-%m-%d")}
+
     def _pull_live(self, entity: EntityKind, cursor: PullCursor) -> Iterator[RawRecord]:
         assert self._client is not None, "chame authenticate() antes do pull"
-        path = ENDPOINTS[entity]
-        params: dict = {"limit": 200, "offset": (cursor.page - 1) * 200}
-        if cursor.since:
-            params["modifiedAfter"] = cursor.since.isoformat()  # TODO(Q1): nome real do filtro
-        resp = self._client.get(path, params=params)
+        spec = ENDPOINTS[entity]
+        limit = 200
+        offset = (cursor.page - 1) * limit
+        params: dict = {"limit": limit, "offset": offset}
+        if spec.needs_date:
+            params.update(self._date_window(cursor))
+        # paginação simples por offset até esgotar
+        while True:
+            resp = self._client.get(self._base(spec), params={**params, "offset": offset})
+            data = resp.json()
+            rows = data.get(spec.list_key, []) if isinstance(data, dict) else data
+            if not rows:
+                break
+            for row in rows:
+                ext = str(row.get("id") or row.get("purchaseQuotationId") or row.get("documentNumber"))
+                yield RawRecord(entity=entity, source_external_id=ext, payload=row)
+            if len(rows) < limit:
+                break
+            offset += limit
+
+    def pull_order_items(self, order_id: str) -> list[dict]:
+        """Sub-recurso de itens do pedido (não vem na listagem)."""
+        assert self._client is not None
+        resp = self._client.get(f"/{self._sub}/public/api/v1/purchase-orders/{order_id}/items")
         data = resp.json()
-        rows = data.get("results", data) if isinstance(data, dict) else data
-        for row in rows:
-            yield RawRecord(entity=entity, source_external_id=str(row.get("id")), payload=row)
+        return data.get("results", []) if isinstance(data, dict) else data
 
     def normalize(self, raw: RawRecord) -> CanonicalRecord:
-        """Mapa campo a campo (esqueleto — fixar contra a API real, Q1).
-
-        Estrutura estável; nomes de campo do Sienge confirmados no onboarding.
-        """
+        """Mapa campo a campo — campos reais validados (§8b)."""
         p = raw.payload
         base = {
             "tenant_id": self.tenant_id,
@@ -111,21 +144,22 @@ class SiengeConnector:
         }
         if raw.entity == EntityKind.PURCHASE_ORDER:
             base.update(
-                total=p.get("totalValue") or p.get("total"),
+                total=p.get("totalAmount"),
                 status=p.get("status"),
-                ordered_at=_dt(p.get("date") or p.get("orderedAt")),
-                # creditor_id/project_id resolvidos por FK na carga (TODO Q1)
+                ordered_at=_dt(p.get("date") or p.get("createdAt")),
+                # supplierId/buildingId resolvidos para creditor_id/project_id na carga canônica
             )
         elif raw.entity == EntityKind.BILL:
             base.update(
-                amount=p.get("amount") or p.get("value"),
+                amount=p.get("totalInvoiceAmount"),
                 status=p.get("status"),
                 due_date=_dt(p.get("dueDate")),
-                paid_at=_dt(p.get("paymentDate")),
+                paid_at=None,  # pagamento por parcela (sub-recurso de installments) — Fase 1
             )
         elif raw.entity == EntityKind.CREDITOR:
-            base.update(name=p.get("name"), cnpj_cpf=p.get("cnpj") or p.get("document"))
-        # demais entidades: mapeadas no onboarding (mesmo padrão).
+            base.update(name=p.get("name"), cnpj_cpf=p.get("cnpj") or p.get("cpf"))
+        # QUOTATION: itens/fornecedores aninhados (purchaseQuotationItems/Suppliers) —
+        # decompostos na carga canônica (Fase de ingest canônica).
         return CanonicalRecord(entity=raw.entity, source_external_id=raw.source_external_id, fields=base)
 
     def health(self) -> ConnectorHealth:
@@ -134,15 +168,13 @@ class SiengeConnector:
         try:
             self.authenticate()
             assert self._client is not None
-            self._client.get(ENDPOINTS[EntityKind.CREDITOR], params={"limit": 1})
+            self._client.get(self._base(ENDPOINTS[EntityKind.CREDITOR]), params={"limit": 1})
             return ConnectorHealth(ok=True, detail="ok", checked_at=now_utc())
         except Exception as e:  # pragma: no cover
             return ConnectorHealth(ok=False, detail=str(e), checked_at=now_utc())
 
 
 def _dt(value):
-    from datetime import datetime
-
     if not value:
         return None
     try:
