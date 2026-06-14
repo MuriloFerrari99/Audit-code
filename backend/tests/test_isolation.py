@@ -24,6 +24,18 @@ def _insert_company(session, tenant_id, name):
     )
 
 
+def test_runtime_role_is_not_privileged():
+    """C-1: o role do runtime NÃO pode ser superusuário nem ter BYPASSRLS —
+    senão o Postgres ignora o RLS e o isolamento multi-tenant é fictício.
+    SessionLocal usa o engine de aplicação (app_rw)."""
+    with SessionLocal() as s:
+        row = s.execute(
+            text("SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user")
+        ).one()
+    assert row.rolsuper is False, "runtime conectado como SUPERUSUÁRIO — RLS é ignorado!"
+    assert row.rolbypassrls is False, "runtime com BYPASSRLS — RLS é ignorado!"
+
+
 def test_tenant_reads_only_its_own_rows(two_tenants):
     a, b = two_tenants
     with tenant_session(str(a)) as s:

@@ -1,9 +1,11 @@
-"""Acesso a banco + fixação de tenant para RLS (T-022, ADR-08).
+"""Acesso a banco + fixação de tenant para RLS (T-022, ADR-08, C-1).
 
-A role da aplicação NÃO tem BYPASSRLS. Toda unidade de trabalho sobre dado de
-cliente roda dentro de `tenant_session(tenant_id)`, que executa
-`SET LOCAL app.current_tenant` na transação. As policies RLS filtram por
-`current_setting('app.current_tenant')`.
+Dois engines, de propósito:
+- `engine` (app_rw): role NOSUPERUSER/NOBYPASSRLS. TODO acesso a dado de cliente
+  passa por aqui, dentro de `tenant_session()`, que seta `app.current_tenant`.
+  Como NÃO é superusuário, o RLS é REALMENTE aplicado (correção do C-1).
+- `admin_engine` (dono): só para migrações/bootstrap e tabelas de plataforma
+  sem RLS (ex.: criar tenant). Nunca usado para ler dado de cliente.
 
 Jobs de background DEVEM abrir a sessão com o tenant explícito.
 """
@@ -21,8 +23,16 @@ from app.core.errors import TenantContextMissing
 from app.core.logging import tenant_id_var
 
 _settings = get_settings()
-engine = create_engine(_settings.database_url, pool_pre_ping=True, future=True)
+
+# Engine de APLICAÇÃO (RLS valendo) — role app_rw.
+engine = create_engine(_settings.app_database_url, pool_pre_ping=True, future=True)
 SessionLocal = sessionmaker(bind=engine, class_=Session, expire_on_commit=False, future=True)
+
+# Engine DONO (migrações / plataforma). Não acessa dado de cliente.
+admin_engine = create_engine(_settings.database_url, pool_pre_ping=True, future=True)
+AdminSessionLocal = sessionmaker(
+    bind=admin_engine, class_=Session, expire_on_commit=False, future=True
+)
 
 
 @contextmanager
@@ -50,10 +60,10 @@ def tenant_session(tenant_id: str) -> Iterator[Session]:
 
 @contextmanager
 def admin_session() -> Iterator[Session]:
-    """Sessão SEM tenant para operações de plataforma (criar tenant, migrações
-    de controle). Não acessa tabelas de dado de cliente protegidas por RLS sem
-    um tenant setado — use com cuidado."""
-    session = SessionLocal()
+    """Sessão do role DONO para operações de plataforma (criar tenant, ETL de
+    referência pública). NÃO usar para ler dado de cliente — é o role dono e
+    pode ignorar RLS. Tabelas de cliente devem ser acessadas via tenant_session."""
+    session = AdminSessionLocal()
     try:
         yield session
         session.commit()

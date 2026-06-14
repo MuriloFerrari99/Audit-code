@@ -21,7 +21,15 @@ class Settings(BaseSettings):
     business_timezone: str = "America/Sao_Paulo"
 
     # Banco
+    # database_url = role DONO (migrações + operações de plataforma). É superusuário
+    # no Postgres oficial → NÃO deve ser usado pelo runtime (superuser ignora RLS).
     database_url: str = "postgresql+psycopg://audit:audit@localhost:5432/audit"
+    # app_database_url = role da APLICAÇÃO (NOSUPERUSER, NOBYPASSRLS). É com ele
+    # que o runtime acessa dado de cliente, para o RLS valer de fato (C-1).
+    app_database_url: str = "postgresql+psycopg://app_rw:app_rw@localhost:5432/audit"
+    # senha do role de aplicação, usada pelo bootstrap p/ criar/rotacionar o role.
+    app_db_password: str = "app_rw"
+    db_owner: str = "audit"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"

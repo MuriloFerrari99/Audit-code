@@ -46,7 +46,8 @@ services:
   api:
     build:
       context: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # migra (dono) + cria role app_rw + sobe a API como app_rw (RLS valendo, C-1)
+    command: bash entrypoint.sh uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     env_file: .env
     depends_on:
       postgres:

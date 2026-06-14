@@ -152,6 +152,14 @@ Para virar PRONTO, no mínimo: corrigir C-1 (role sem superusuário), **executar
 
 ---
 
+## Remediação iniciada (mesma data — pós-auditoria)
+
+> Correções de código aplicadas; **prova plena depende de rodar a suíte no container** (Postgres + Python 3.11), o que este ambiente não tem.
+
+- **C-1 (RLS/superusuário) — CORRIGIDO em código:** separação de roles. Runtime agora usa `app_rw` (NOSUPERUSER, NOBYPASSRLS) via `app_database_url`; o role dono (superusuário) só migra/faz plataforma. Ver [backend/app/core/db.py](../backend/app/core/db.py) (dois engines), [backend/scripts/bootstrap_roles.py](../backend/scripts/bootstrap_roles.py), [backend/entrypoint.sh](../backend/entrypoint.sh), [docker-compose.yml](../docker-compose.yml). **Status: aguarda execução no container para confirmar.**
+- **C-2 (isolamento provado) — TESTE ADICIONADO:** [test_isolation.py](../backend/tests/test_isolation.py) ganhou `test_runtime_role_is_not_privileged` (falha se o runtime for superusuário/BYPASSRLS) + os testes de isolamento agora rodam sob `app_rw`. **Status: `make up && make test` no container confirma.**
+- **C-3 (credencial):** continua pendente de **rotação manual** no Sienge pelo founder.
+
 ## O que este auditor NÃO conseguiu verificar (honestidade)
 
 - Execução de `pytest`, cobertura, `mypy`, `semgrep`, `gitleaks` — ambiente sem Postgres/Docker e Python 3.9. **Recomendação:** repetir esta auditoria dentro do container (Python 3.11 + Postgres), onde tudo roda, antes de qualquer go-live. Até lá, os itens acima permanecem **NÃO VERIFICADOS por execução**, o que é, por si, motivo de não-prontidão.

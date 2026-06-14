@@ -1,4 +1,4 @@
-.PHONY: up down logs build test lint fmt typecheck migrate revision seed shell-db
+.PHONY: up down logs build test lint fmt typecheck migrate bootstrap revision seed sync shell-db
 
 # Infra local
 up:        ## sobe o stack (postgres+pgvector, redis, minio, api, worker)
@@ -17,15 +17,19 @@ fmt:
 	cd backend && ruff format . && ruff check . --fix
 typecheck:
 	cd backend && mypy app
-test:
-	cd backend && pytest -q
 
-# Banco
-migrate:   ## aplica migrações Alembic
-	cd backend && alembic upgrade head
+# Banco (rodam DENTRO do container — a API já migra+bootstrap no `make up`)
+migrate:   ## aplica migrações Alembic (role dono)
+	docker compose exec api alembic upgrade head
+bootstrap: ## cria/atualiza o role de aplicação app_rw (C-1)
+	docker compose exec api python -m scripts.bootstrap_roles
 revision:  ## cria migração: make revision m="mensagem"
-	cd backend && alembic revision --autogenerate -m "$(m)"
+	docker compose exec api alembic revision --autogenerate -m "$(m)"
 seed:      ## carrega dados sintéticos (formato Sienge)
-	cd backend && python -m scripts.seed_synthetic
+	docker compose exec api python -m scripts.seed_synthetic
+sync:      ## sync real do Sienge (Alumbra): make sync n=300
+	docker compose exec api python -m scripts.sync_alumbra $(or $(n),300)
+test:      ## roda a suíte dentro do container (inclui isolamento)
+	docker compose exec api pytest -q
 shell-db:
 	docker compose exec postgres psql -U audit -d audit
