@@ -14,6 +14,7 @@ Convenção de path (namespaced por tenant):
 from __future__ import annotations
 
 import os
+import re
 from typing import Protocol
 
 
@@ -43,6 +44,10 @@ class EnvSecretProvider:
         "embeddings/api_key": "EMBEDDINGS_API_KEY",
     }
 
+    # Atalho de dev/single-tenant: tenant/<id>/sienge/<campo> cai para
+    # SIENGE_DEFAULT_<CAMPO> quando a forma namespaced não existe.
+    _SIENGE_RE = re.compile(r"^tenant/[^/]+/sienge/(subdomain|user|password)$")
+
     def get_optional(self, path: str) -> str | None:
         val = os.environ.get(_path_to_env(path))
         if val:
@@ -50,6 +55,9 @@ class EnvSecretProvider:
         fallback = self._DEV_FALLBACK.get(path)
         if fallback:
             return os.environ.get(fallback)
+        m = self._SIENGE_RE.match(path)
+        if m:
+            return os.environ.get(f"SIENGE_DEFAULT_{m.group(1).upper()}")
         return None
 
     def get(self, path: str) -> str:
