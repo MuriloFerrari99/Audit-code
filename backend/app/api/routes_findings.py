@@ -52,6 +52,24 @@ def trigger_rules(
     return {"tenant_id": user.tenant_id, "found": summary}
 
 
+@router.get("/calibration")
+def calibration(db: Session = Depends(get_tenant_db)) -> dict:
+    """Calibração por empresa (Módulo C): stats de aceite/descarte + sugestões."""
+    from app.calibration.service import get_calibration
+
+    return get_calibration(db)
+
+
+@router.post("/calibration/recompute")
+def calibration_recompute(
+    db: Session = Depends(get_tenant_db),
+    user: CurrentUser = Depends(get_current_user),
+) -> dict:
+    from app.calibration.service import recompute
+
+    return recompute(db, user.tenant_id)
+
+
 @router.get("/quality")
 def quality(db: Session = Depends(get_tenant_db)) -> dict:
     """Higiene de Dados: lançamentos a checar/corrigir no Sienge (Módulo A)."""

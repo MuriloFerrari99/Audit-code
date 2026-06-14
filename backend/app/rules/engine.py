@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import get_logger
 from app.core.timeutils import now_utc
 from app.models.findings import Finding, FindingEvidence, FindingStatus, RuleConfig
+from app.calibration.service import get_factors
 from app.rules.base import FindingDraft, Rule, RuleContext, registry
 from app.rules.confidence import score as confidence_score
 
@@ -58,12 +59,16 @@ def _replace_evidence(session: Session, tenant_id: str, finding: Finding, draft:
         )
 
 
-def upsert_finding(session: Session, tenant_id: str, draft: FindingDraft) -> Finding:
+def upsert_finding(
+    session: Session, tenant_id: str, draft: FindingDraft, factors: dict[str, float] | None = None
+) -> Finding:
     existing = session.execute(
         select(Finding).where(Finding.dedup_key == draft.dedup_key)
     ).scalar_one_or_none()
     amount = draft.exposed_amount.amount if draft.exposed_amount else None
-    conf = confidence_score(draft.rule_id, draft.reference_snapshot)
+    base = confidence_score(draft.rule_id, draft.reference_snapshot)
+    factor = (factors or {}).get(draft.rule_id, 1.0)  # calibração por tenant (Módulo C)
+    conf = round(max(0.0, min(1.0, base * factor)), 3)
 
     if existing is None:
         finding = Finding(
@@ -116,17 +121,20 @@ def resolve_stale(session: Session, rule_id: str, current_keys: set[str]) -> int
     return n
 
 
-def run_rule(session: Session, ctx: RuleContext, rule: Rule) -> list[FindingDraft]:
+def run_rule(
+    session: Session, ctx: RuleContext, rule: Rule, factors: dict[str, float] | None = None
+) -> list[FindingDraft]:
     drafts = rule.evaluate(session, ctx)
     current_keys = {d.dedup_key for d in drafts}
     for d in drafts:
-        upsert_finding(session, ctx.tenant_id, d)
+        upsert_finding(session, ctx.tenant_id, d, factors)
     resolved = resolve_stale(session, rule.id, current_keys)
     log.info("rule.run", rule=rule.id, found=len(drafts), resolved=resolved)
     return drafts
 
 
 def run_all(session: Session, tenant_id: str, rule_ids: list[str] | None = None) -> dict[str, int]:
+    factors = get_factors(session)  # calibração por tenant (Módulo C)
     summary: dict[str, int] = {}
     for rule in registry.all():
         if rule_ids and rule.id not in rule_ids:
@@ -135,6 +143,6 @@ def run_all(session: Session, tenant_id: str, rule_ids: list[str] | None = None)
         if not enabled:
             continue
         ctx = RuleContext(tenant_id=tenant_id, params=params, now=now_utc())
-        drafts = run_rule(session, ctx, rule)
+        drafts = run_rule(session, ctx, rule, factors)
         summary[rule.id] = len(drafts)
     return summary

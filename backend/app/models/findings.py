@@ -94,6 +94,20 @@ class RuleConfig(Base, TenantScopedMixin):
     updated_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
 
+class RuleCalibration(Base, TenantScopedMixin):
+    """Calibração por (tenant, regra) aprendida do feedback (Módulo C)."""
+
+    __tablename__ = "rule_calibration"
+
+    rule_id: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    samples: Mapped[int] = mapped_column(default=0, nullable=False)
+    accepted: Mapped[int] = mapped_column(default=0, nullable=False)
+    dismissed: Mapped[int] = mapped_column(default=0, nullable=False)
+    acceptance_rate: Mapped[float | None] = mapped_column(Numeric(4, 3), nullable=True)
+    confidence_factor: Mapped[float] = mapped_column(Numeric(4, 3), default=1.0, nullable=False)
+    __table_args__ = (UniqueConstraint("tenant_id", "rule_id", name="uq_rule_calibration"),)
+
+
 class ValueLedger(Base, TenantScopedMixin):
     """Ledger de gainshare (gtm.md). Imutável; reversão entra como nova linha."""
 
@@ -134,5 +148,6 @@ TENANT_SCOPED.update(
         "finding_review",
         "rule_config",
         "value_ledger",
+        "rule_calibration",
     }
 )
