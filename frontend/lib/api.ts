@@ -111,6 +111,13 @@ export const api = {
     request<{ total: number; by_code: Record<string, number>; issues: import("./types").QualityIssue[] }>(
       "/quality",
     ),
+  calibration: () =>
+    request<{ stats: import("./types").CalibrationStat[]; suggestions: string[] }>("/calibration"),
+  calibrationRecompute: () =>
+    request<{ stats: import("./types").CalibrationStat[]; suggestions: string[] }>(
+      "/calibration/recompute",
+      { method: "POST" },
+    ),
 };
 
 export { ApiError };

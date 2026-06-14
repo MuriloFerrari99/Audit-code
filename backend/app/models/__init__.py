@@ -17,7 +17,7 @@ from app.models.findings import (
     Severity,
     ValueLedger,
 )
-from app.models.platform import EntityHistory, OutboxEvent, RawRecord, TenantSecret
+from app.models.platform import DeadLetter, EntityHistory, OutboxEvent, RawRecord, TenantSecret
 from app.models.sourcing import (
     Bill,
     BudgetItem,
@@ -48,6 +48,7 @@ __all__ = [
     "EntityHistory",
     "OutboxEvent",
     "TenantSecret",
+    "DeadLetter",
     # sourcing
     "Creditor",
     "BudgetItem",

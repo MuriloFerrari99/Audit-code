@@ -68,6 +68,26 @@ class OutboxEvent(Base):
     __table_args__ = (Index("ix_outbox_unprocessed", "processed_at"),)
 
 
+class DeadLetter(Base):
+    """Registro de ingestão que falhou (A-3): nunca falhar em silêncio.
+
+    Em vez de logar e seguir, a falha vira linha visível/contável aqui, para o
+    operador saber que um lançamento ficou de fora da auditoria."""
+
+    __tablename__ = "dead_letter"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    resolved: Mapped[bool] = mapped_column(default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class TenantSecret(Base, TimestampMixin):
     """Segredo por tenant (ex.: credencial Sienge), CRIPTOGRAFADO em repouso.
 
@@ -86,4 +106,4 @@ class TenantSecret(Base, TimestampMixin):
 
 
 # Todas têm tenant_id e devem ter RLS (exceto tenant_secret, que é plataforma).
-TENANT_SCOPED.update({"raw_record", "entity_history", "outbox_event"})
+TENANT_SCOPED.update({"raw_record", "entity_history", "outbox_event", "dead_letter"})

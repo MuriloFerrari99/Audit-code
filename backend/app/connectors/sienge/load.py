@@ -22,6 +22,7 @@ from app.connectors.sienge import transform as T
 from app.connectors.sienge.connector import SiengeConnector
 from app.core.db import tenant_session
 from app.core.logging import get_logger
+from app.models.platform import DeadLetter
 from app.models.sourcing import (
     Bill,
     BudgetItem,
@@ -51,7 +52,7 @@ def load_canonical(
     pedidos, cada um com um sub-call de itens)."""
     connector.authenticate()
     summary = {"creditor": 0, "purchase_order": 0, "purchase_order_item": 0,
-               "bill": 0, "budget_item": 0, "quotation": 0, "invoice": 0}
+               "bill": 0, "budget_item": 0, "quotation": 0, "invoice": 0, "dead_letters": 0}
 
     with tenant_session(tenant_id) as s:
         # 1) Credores
@@ -121,8 +122,12 @@ def load_canonical(
             # itens (sub-recurso)
             try:
                 items = connector.pull_order_items(ext)
-            except Exception as e:  # não derruba o batch (ADR-15)
+            except Exception as e:  # não derruba o batch (ADR-15) — mas NÃO em silêncio (A-3)
                 log.warning("load.items.error", order=ext, error=str(e))
+                s.add(DeadLetter(tenant_id=tenant_id, source="sienge",
+                                 entity_type="purchase_order_item", ref=ext,
+                                 reason=f"falha ao puxar itens: {e}"[:500]))
+                summary["dead_letters"] += 1
                 items = []
             for it in items:
                 fi = T.to_order_item(it)

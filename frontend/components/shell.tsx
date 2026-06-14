@@ -9,6 +9,7 @@ const NAV = [
   { href: "/", label: "Visão geral" },
   { href: "/findings", label: "Achados" },
   { href: "/quality", label: "Higiene de dados" },
+  { href: "/calibration", label: "Aprendizado" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

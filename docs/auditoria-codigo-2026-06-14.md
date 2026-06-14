@@ -160,6 +160,13 @@ Para virar PRONTO, no mínimo: corrigir C-1 (role sem superusuário), **executar
 - **C-2 (isolamento provado) — TESTE ADICIONADO:** [test_isolation.py](../backend/tests/test_isolation.py) ganhou `test_runtime_role_is_not_privileged` (falha se o runtime for superusuário/BYPASSRLS) + os testes de isolamento agora rodam sob `app_rw`. **Status: `make up && make test` no container confirma.**
 - **C-3 (credencial):** continua pendente de **rotação manual** no Sienge pelo founder.
 
+### Endurecimento adicional (rodada de produção)
+- **M-1 (CI) — FEITO:** [.github/workflows/ci.yml](../.github/workflows/ci.yml) roda ruff, mypy (advisory), **a suíte com Postgres real** (migra como dono → bootstrap `app_rw` → pytest, incluindo o teste de isolamento — fecha a execução do C-2), build do frontend, bandit, pip-audit e gitleaks.
+- **A-3 (falha silenciosa) — FEITO:** tabela `dead_letter` (RLS) + a carga registra falhas de item ali (visível/contável) em vez de só logar; `load_canonical` retorna `dead_letters`.
+- **A-2 (auditoria contínua) — FEITO:** worker com APScheduler ([app/workers/run.py](../backend/app/workers/run.py)) sincroniza+audita os tenants com credencial, em intervalo configurável; um tenant com erro não derruba os outros.
+- **A-4 (deps) — PARCIAL:** frontend com lockfile e Next em patch; CI roda pip-audit/npm audit. Falta lockfile determinístico do backend (uv/pip-tools) — recomendado.
+- **Pendências reais:** C-3 rotacionar credencial; rodar o CI no GitHub (precisa do repo remoto); lockfile backend.
+
 ## O que este auditor NÃO conseguiu verificar (honestidade)
 
 - Execução de `pytest`, cobertura, `mypy`, `semgrep`, `gitleaks` — ambiente sem Postgres/Docker e Python 3.9. **Recomendação:** repetir esta auditoria dentro do container (Python 3.11 + Postgres), onde tudo roda, antes de qualquer go-live. Até lá, os itens acima permanecem **NÃO VERIFICADOS por execução**, o que é, por si, motivo de não-prontidão.

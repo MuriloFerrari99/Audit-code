@@ -83,6 +83,15 @@ export const DIMENSION_LABELS: Record<number, string> = {
   4: "Integridade",
 };
 
+export interface CalibrationStat {
+  rule_id: string;
+  samples: number;
+  accepted: number;
+  dismissed: number;
+  acceptance_rate: number | null;
+  confidence_factor: number;
+}
+
 export interface QualityIssue {
   code: string;
   severity: string;
