@@ -14,8 +14,10 @@ from app.connectors.sienge.connector import SiengeConnector
 from app.connectors.sienge.load import load_canonical
 from app.core.db import tenant_session
 from app.core.secrets import get_secret_provider
+from app.integrity.service import refresh_for_tenant
 from app.rules.builtin import register_builtin_rules
 from app.rules.engine import run_all
+from app.rules.integrity_rules import register_integrity_rules
 
 TENANT = "11111111-1111-1111-1111-111111111111"
 
@@ -29,16 +31,22 @@ def main() -> None:
     summary = load_canonical(connector, TENANT, max_orders=max_orders)
     print("      carga:", summary)
 
-    try:
-        register_builtin_rules()
-    except ValueError:
-        pass
+    for reg in (register_builtin_rules, register_integrity_rules):
+        try:
+            reg()
+        except ValueError:
+            pass
 
-    print("[2/3] rodando as 6 regras sobre o dado real...")
+    print("[2/4] checando integridade dos fornecedores (Receita/BrasilAPI)...")
+    with tenant_session(TENANT) as s:
+        integ = refresh_for_tenant(s, TENANT, limit=50)
+    print("      integridade:", integ)
+
+    print("[3/4] rodando as regras sobre o dado real...")
     with tenant_session(TENANT) as s:
         found = run_all(s, TENANT)
     print("      achados por regra:", found)
-    print("[3/3] pronto. Veja em http://localhost:3000 (ou /findings na API).")
+    print("[4/4] pronto. Veja em http://localhost:3000 (ou /findings na API).")
 
 
 if __name__ == "__main__":

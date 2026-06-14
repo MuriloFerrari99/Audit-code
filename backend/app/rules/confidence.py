@@ -16,6 +16,12 @@ _BASE = {
     "R4": 0.70,  # estouro medido vs orçado
     "R5": 0.80,  # divergência pedido->pagamento (cadeia direta)
     "R6": 0.45,  # sem concorrência (governança, não perda)
+    # Dimensão 4 — integridade (fonte oficial = alta; heurística = média/baixa)
+    "I1": 0.90,  # fornecedor sancionado (CEIS/CNEP)
+    "I2": 0.85,  # CNPJ não-ativo (situação cadastral)
+    "I3": 0.55,  # empresa recém-aberta de alto valor (heurística)
+    "I4": 0.60,  # sócio em comum (sinal de conluio)
+    "I5": 0.40,  # não verificado (fonte indisponível)
 }
 
 THRESHOLD = 0.55  # abaixo disto -> "a investigar"

@@ -56,17 +56,23 @@ def _run(tenant_id: str, max_orders: int) -> None:
     from app.connectors.sienge.connector import SiengeConnector
     from app.connectors.sienge.load import load_canonical
     from app.core.db import tenant_session
+    from app.integrity.service import refresh_for_tenant
     from app.rules.builtin import register_builtin_rules
     from app.rules.engine import run_all
+    from app.rules.integrity_rules import register_integrity_rules
 
-    try:
-        register_builtin_rules()
-    except ValueError:
-        pass
+    for reg in (register_builtin_rules, register_integrity_rules):
+        try:
+            reg()
+        except ValueError:
+            pass
     try:
         _STATUS[tenant_id] = {"state": "carregando", "step": "lendo dados do Sienge"}
         connector = SiengeConnector(tenant_id, get_secret_provider(), use_fixtures=False)
         summary = load_canonical(connector, tenant_id, max_orders=max_orders)
+        _STATUS[tenant_id] = {"state": "verificando", "step": "checando integridade dos fornecedores"}
+        with tenant_session(tenant_id) as s:
+            refresh_for_tenant(s, tenant_id, limit=50)
         _STATUS[tenant_id] = {"state": "auditando", "step": "rodando regras", "loaded": summary}
         with tenant_session(tenant_id) as s:
             found = run_all(s, tenant_id)

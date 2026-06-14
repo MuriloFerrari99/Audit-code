@@ -17,13 +17,15 @@ from app.core.config import get_settings
 from app.core.db import db_healthy
 from app.core.logging import configure_logging, get_logger, request_id_var
 from app.rules.builtin import register_builtin_rules
+from app.rules.integrity_rules import register_integrity_rules
 
 settings = get_settings()
 configure_logging(settings.log_level)
 log = get_logger("api")
 
-# Registra as 6 regras do MVP no registry (idempotente por processo).
+# Registra as regras no registry (idempotente por processo).
 register_builtin_rules()
+register_integrity_rules()
 
 app = FastAPI(title="Auditoria de Gastos — API", version="0.1.0")
 

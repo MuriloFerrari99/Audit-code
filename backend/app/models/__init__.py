@@ -5,6 +5,7 @@ tabelas e que TENANT_SCOPED seja populado antes das migrações.
 from app.models.auth import Membership, Role, User
 from app.models.base import TENANT_SCOPED, Base
 from app.models.catalog import CatalogItem, ItemMapping, SinapiReference
+from app.models.integrity import Counterparty
 from app.models.findings import (
     AuditLog,
     Finding,
@@ -61,6 +62,7 @@ __all__ = [
     "CatalogItem",
     "ItemMapping",
     "SinapiReference",
+    "Counterparty",
     # findings
     "Finding",
     "FindingEvidence",
