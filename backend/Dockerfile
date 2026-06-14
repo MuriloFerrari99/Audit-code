@@ -11,8 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libpq-dev curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-RUN pip install --upgrade pip && pip install -e ".[dev]"
+COPY pyproject.toml requirements.lock ./
+# Build reproduzível: instala as versões fixadas do lock (A-4) e o pacote local.
+RUN pip install --upgrade pip && pip install -r requirements.lock && pip install -e . --no-deps
 
 COPY . .
 
