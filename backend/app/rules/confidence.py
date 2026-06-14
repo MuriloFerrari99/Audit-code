@@ -22,6 +22,10 @@ _BASE = {
     "I3": 0.55,  # empresa recém-aberta de alto valor (heurística)
     "I4": 0.60,  # sócio em comum (sinal de conluio)
     "I5": 0.40,  # não verificado (fonte indisponível)
+    # Dimensão 2 — fiscal
+    "F1": 0.80,  # divergência pedido->nota (cadeia direta)
+    "F2": 0.75,  # nota inconsistente (flag do próprio Sienge)
+    "F3": 0.80,  # divergência nota->pagamento (cadeia direta)
 }
 
 THRESHOLD = 0.55  # abaixo disto -> "a investigar"

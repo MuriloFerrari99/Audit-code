@@ -107,6 +107,27 @@ def to_budget_item(p: dict) -> dict:
     }
 
 
+def to_invoice(p: dict) -> dict:
+    """Nota fiscal (/purchase-invoices) -> canônico (dim.2 Fase A)."""
+    company = _s(p.get("companyId"))
+    seq = _s(p.get("sequentialNumber"))
+    total = p.get("eletronicInvoiceAmount") or p.get("itemsTotalAmount")
+    return {
+        "source_external_id": f"{company}:{seq}" if company and seq else seq,
+        "number": _s(p.get("number")),
+        "series": _s(p.get("series")),
+        "issued_at": p.get("issueDate"),
+        "total_invoiced": total,
+        "products_amount": p.get("productsAmount"),
+        "ipi_tax": p.get("ipiTax"),
+        "icms_st_tax": p.get("icmsStTax"),
+        "consistency": _s(p.get("consistency")),
+        "eletronic_invoice_id": _s(p.get("eletronicInvoiceId")),
+        "supplier_ext": _s(p.get("supplierId")),
+        "bill_ext": _s(p.get("billId")),
+    }
+
+
 def to_bill(p: dict) -> dict:
     return {
         "source_external_id": _s(p.get("id")),

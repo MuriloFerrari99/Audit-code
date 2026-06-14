@@ -87,6 +87,21 @@ def test_quotation_decompose():
     assert by_sup["1900"]["raw_description"] == "VERGALHAO 10MM"
 
 
+INVOICE = {"sequentialNumber": 12345, "companyId": 1, "number": "987", "series": "1",
+           "issueDate": "2026-06-11", "supplierId": 1768, "billId": 44027,
+           "productsAmount": 1000.0, "itemsTotalAmount": 1050.0, "eletronicInvoiceAmount": 1050.0,
+           "eletronicInvoiceId": "NFE123", "ipiTax": 50.0, "icmsStTax": 0.0, "consistency": "N"}
+
+
+def test_invoice():
+    r = t.to_invoice(INVOICE)
+    assert r["source_external_id"] == "1:12345"
+    assert r["total_invoiced"] == 1050.0
+    assert r["consistency"] == "N"  # flag de nota inconsistente (F2)
+    assert r["supplier_ext"] == "1768"
+    assert r["bill_ext"] == "44027"  # vínculo p/ F3 (nota↔pagamento)
+
+
 def test_budget_item():
     r = t.to_budget_item(BUDGET)
     assert r["source_external_id"] == "202:1"  # chave composta obra:id

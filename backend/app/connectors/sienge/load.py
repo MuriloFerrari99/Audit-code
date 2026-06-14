@@ -26,6 +26,7 @@ from app.models.sourcing import (
     Bill,
     BudgetItem,
     Creditor,
+    Invoice,
     PurchaseOrder,
     PurchaseOrderItem,
     Quotation,
@@ -50,7 +51,7 @@ def load_canonical(
     pedidos, cada um com um sub-call de itens)."""
     connector.authenticate()
     summary = {"creditor": 0, "purchase_order": 0, "purchase_order_item": 0,
-               "bill": 0, "budget_item": 0, "quotation": 0}
+               "bill": 0, "budget_item": 0, "quotation": 0, "invoice": 0}
 
     with tenant_session(tenant_id) as s:
         # 1) Credores
@@ -202,6 +203,34 @@ def load_canonical(
                 q.qty = _dec(r["qty"])
                 q.valid_until = _parse_dt(r["valid_until"])
                 q.creditor_id = creditor_map.get(r["supplier_ext"] or "")
+
+        # 6) Notas fiscais (dim.2 Fase A) — vínculo ao pedido via bill compartilhado
+        for raw in connector.pull(EntityKind.INVOICE, PullCursor()):
+            f = T.to_invoice(raw.payload)
+            ext = f["source_external_id"]
+            if not ext:
+                continue
+            inv = s.execute(
+                select(Invoice).where(Invoice.source == "sienge", Invoice.source_external_id == ext)
+            ).scalar_one_or_none()
+            if inv is None:
+                inv = Invoice(tenant_id=tenant_id, source="sienge", source_external_id=ext,
+                              content_hash=_hash(f))
+                s.add(inv)
+                summary["invoice"] += 1
+            inv.number = f["number"]
+            inv.series = f["series"]
+            inv.issued_at = _parse_dt(f["issued_at"])
+            inv.total_invoiced = _dec(f["total_invoiced"])
+            inv.products_amount = _dec(f["products_amount"])
+            inv.ipi_tax = _dec(f["ipi_tax"])
+            inv.icms_st_tax = _dec(f["icms_st_tax"])
+            inv.consistency = f["consistency"]
+            inv.eletronic_invoice_id = f["eletronic_invoice_id"]
+            inv.creditor_id = creditor_map.get(f["supplier_ext"] or "")
+            inv.bill_external = f["bill_ext"]
+            # vínculo ao pedido (best-effort): nota e pedido compartilham o título
+            inv.order_id = forecast_to_order.get(f["bill_ext"]) if f["bill_ext"] else None
 
     log.info("load.canonical.done", **summary)
     return summary

@@ -59,9 +59,10 @@ def _run(tenant_id: str, max_orders: int) -> None:
     from app.integrity.service import refresh_for_tenant
     from app.rules.builtin import register_builtin_rules
     from app.rules.engine import run_all
+    from app.rules.fiscal_rules import register_fiscal_rules
     from app.rules.integrity_rules import register_integrity_rules
 
-    for reg in (register_builtin_rules, register_integrity_rules):
+    for reg in (register_builtin_rules, register_integrity_rules, register_fiscal_rules):
         try:
             reg()
         except ValueError:

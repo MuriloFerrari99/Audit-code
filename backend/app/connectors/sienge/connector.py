@@ -54,6 +54,7 @@ ENDPOINTS: dict[EntityKind, EndpointSpec] = {
     EntityKind.BILL: EndpointSpec("/bills", needs_date=True),
     EntityKind.QUOTATION: EndpointSpec("/purchase-quotations", bulk=True, needs_date=True, list_key="data"),
     EntityKind.BUDGET_ITEM: EndpointSpec("/building-cost-estimation-items", bulk=True, list_key="data"),
+    EntityKind.INVOICE: EndpointSpec("/purchase-invoices"),
 }
 
 
@@ -114,7 +115,8 @@ class SiengeConnector:
 
         def emit(rows):
             for row in rows:
-                ext = str(row.get("id") or row.get("purchaseQuotationId") or row.get("documentNumber"))
+                ext = str(row.get("id") or row.get("purchaseQuotationId")
+                          or row.get("sequentialNumber") or row.get("documentNumber"))
                 yield RawRecord(entity=entity, source_external_id=ext, payload=row)
 
         if spec.bulk:
