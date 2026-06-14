@@ -61,8 +61,10 @@ def _run(tenant_id: str, max_orders: int) -> None:
     from app.rules.engine import run_all
     from app.rules.fiscal_rules import register_fiscal_rules
     from app.rules.integrity_rules import register_integrity_rules
+    from app.rules.payment_rules import register_payment_rules
 
-    for reg in (register_builtin_rules, register_integrity_rules, register_fiscal_rules):
+    for reg in (register_builtin_rules, register_integrity_rules, register_fiscal_rules,
+                register_payment_rules):
         try:
             reg()
         except ValueError:

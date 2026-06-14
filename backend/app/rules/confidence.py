@@ -26,6 +26,9 @@ _BASE = {
     "F1": 0.80,  # divergência pedido->nota (cadeia direta)
     "F2": 0.75,  # nota inconsistente (flag do próprio Sienge)
     "F3": 0.80,  # divergência nota->pagamento (cadeia direta)
+    # Dimensão 3 — pagamento
+    "P1": 0.60,  # pagamento duplicado (risco de FP por parcela/refaturamento)
+    "P2": 0.65,  # pagamento sem lastro
 }
 
 THRESHOLD = 0.55  # abaixo disto -> "a investigar"

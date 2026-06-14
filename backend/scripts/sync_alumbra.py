@@ -19,6 +19,7 @@ from app.rules.builtin import register_builtin_rules
 from app.rules.engine import run_all
 from app.rules.fiscal_rules import register_fiscal_rules
 from app.rules.integrity_rules import register_integrity_rules
+from app.rules.payment_rules import register_payment_rules
 
 TENANT = "11111111-1111-1111-1111-111111111111"
 
@@ -32,7 +33,8 @@ def main() -> None:
     summary = load_canonical(connector, TENANT, max_orders=max_orders)
     print("      carga:", summary)
 
-    for reg in (register_builtin_rules, register_integrity_rules, register_fiscal_rules):
+    for reg in (register_builtin_rules, register_integrity_rules, register_fiscal_rules,
+                register_payment_rules):
         try:
             reg()
         except ValueError:

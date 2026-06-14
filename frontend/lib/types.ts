@@ -58,6 +58,9 @@ export const RULE_NAMES: Record<string, string> = {
   F1: "Nota acima do pedido",
   F2: "Nota inconsistente",
   F3: "Pagamento acima da nota",
+  // Dimensão 3 — Pagamento
+  P1: "Pagamento duplicado",
+  P2: "Pagamento sem lastro",
   // Dimensão 4 — Integridade do fornecedor
   I1: "Fornecedor sancionado",
   I2: "CNPJ não-ativo",
@@ -69,7 +72,7 @@ export const RULE_NAMES: Record<string, string> = {
 export const RULE_DIMENSION: Record<string, number> = {
   R1: 1, R2: 1, R3: 1, R4: 1, R6: 1,
   F1: 2, F2: 2, F3: 2,
-  R5: 3,
+  R5: 3, P1: 3, P2: 3,
   I1: 4, I2: 4, I3: 4, I4: 4, I5: 4,
 };
 

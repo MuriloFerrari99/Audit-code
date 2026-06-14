@@ -135,4 +135,6 @@ def to_bill(p: dict) -> dict:
         "creditor_ext": _s(p.get("creditorId")),
         "status": p.get("status"),
         "issued_at": p.get("issueDate"),
+        "document_number": _s(p.get("documentNumber")),
+        "document_identification": _s(p.get("documentIdentificationId")),
     }

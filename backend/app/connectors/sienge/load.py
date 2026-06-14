@@ -180,6 +180,8 @@ def load_canonical(
                 summary["bill"] += 1
             bill.amount = _dec(f["amount"])
             bill.status = f["status"]
+            bill.document_number = f.get("document_number")
+            bill.document_identification = f.get("document_identification")
             bill.creditor_id = creditor_map.get(f["creditor_ext"] or "")
             bill.order_id = forecast_to_order.get(ext)
 

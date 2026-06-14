@@ -19,6 +19,7 @@ from app.core.logging import configure_logging, get_logger, request_id_var
 from app.rules.builtin import register_builtin_rules
 from app.rules.fiscal_rules import register_fiscal_rules
 from app.rules.integrity_rules import register_integrity_rules
+from app.rules.payment_rules import register_payment_rules
 
 settings = get_settings()
 configure_logging(settings.log_level)
@@ -28,6 +29,7 @@ log = get_logger("api")
 register_builtin_rules()
 register_integrity_rules()
 register_fiscal_rules()
+register_payment_rules()
 
 app = FastAPI(title="Auditoria de Gastos — API", version="0.1.0")
 

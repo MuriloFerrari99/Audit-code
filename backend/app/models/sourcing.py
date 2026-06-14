@@ -160,6 +160,8 @@ class Bill(Base, TenantScopedMixin, SourcedMixin):
     order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     creditor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     amount: Mapped[float | None] = mapped_column(MONEY, nullable=True)
+    document_number: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    document_identification: Mapped[str | None] = mapped_column(String(20), nullable=True)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str | None] = mapped_column(String(30), nullable=True)
