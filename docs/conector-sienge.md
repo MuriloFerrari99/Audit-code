@@ -133,7 +133,8 @@ class SourceConnector(Protocol):
 
 **Orçamento (R4) — ENCONTRADO:** `bulk-data/v1/building-cost-estimation-items` (5.288 itens p/ a obra 202). Campos: `buildingId`, `description`, `quantity` (orçada), **`measuredQuantity` (medida/executada)**, `unitPrice`, `totalPrice`, `unitOfMeasure`, `workItemId` (chave do serviço/insumo), `wbsCode`, `percentComplete`. → **R4 fica auto-contido**: `measuredQuantity` vs `quantity` (sem join com pedidos).
 
-**Cotações (R2/R6) — estrutura mapeada:** `purchaseQuotationSuppliers[].negotiations[].negotiationItems[]` com `productId`, `unitPrice`, `quotedQuantity`, `negotiatedQuantity`, `selectedOption`; negotiation tem `sellersName`, `totalValue`. Contagem de fornecedores distintos = `len(purchaseQuotationSuppliers)` (R6); menor `unitPrice` por `productId` = melhor cotação (R2). **Questão aberta:** confirmar se `productId` (cotação) == `resourceId` (item do pedido) para casar R2; alternativamente usar o aninhado `purchaseQuotations` do item do pedido.
+**Cotações (R2/R6) — estrutura mapeada:** `purchaseQuotationSuppliers[].negotiations[].negotiationItems[]` com `productId`, `unitPrice`, `quotedQuantity`, `negotiatedQuantity`, `selectedOption`; negotiation tem `sellersName`, `totalValue`. Contagem de fornecedores distintos = `len(purchaseQuotationSuppliers)` (R6); menor `unitPrice` por `productId` = melhor cotação (R2).
+**Achado da sondagem:** o campo `purchaseQuotations` do item do pedido vem **vazio** nos pedidos amostrados (vários pedidos sem cotação registrada — já é sinal de R6). Logo o casamento R2/R6 deve ser por **`resourceId` (item do pedido) ↔ `productId` (item da cotação)** — confirmar que compartilham o mesmo namespace de "produto" rodando o pipeline com dado real (decisão de construção adiada para evitar lógica errada).
 
 **Lacunas restantes:**
 1. **`deliveries-attended`:** obter um pedido com entrega para fixar o shape (amostras vieram vazias) — R4 agora não depende disso.
