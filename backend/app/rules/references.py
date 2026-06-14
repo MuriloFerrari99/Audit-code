@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.catalog import CatalogItem, SinapiReference
+from app.rules.classify import DISPERSION_MAX
 from app.models.sourcing import PurchaseOrderItem
 
 
@@ -78,26 +79,34 @@ def _internal_median(session: Session, catalog_item_id: str) -> PriceReference |
 
 def _internal_median_by_resource(session: Session, resource_code: str) -> PriceReference | None:
     """Mediana intra-tenant agrupada pelo código do insumo na fonte (resourceId
-    do Sienge) — funciona sem casamento de catálogo (ML)."""
-    median = session.execute(
-        select(func.percentile_cont(0.5).within_group(PurchaseOrderItem.unit_price)).where(
+    do Sienge) — funciona sem casamento de catálogo (ML).
+
+    Guarda de heterogeneidade (A-1): se o mesmo código mistura preços de ordens
+    de grandeza diferentes (max/min > DISPERSION_MAX), a mediana é inválida e a
+    referência é descartada — evita falso-positivo de sobrepreço."""
+    row = session.execute(
+        select(
+            func.percentile_cont(0.5).within_group(PurchaseOrderItem.unit_price),
+            func.count(),
+            func.min(PurchaseOrderItem.unit_price),
+            func.max(PurchaseOrderItem.unit_price),
+        ).where(
             PurchaseOrderItem.resource_code == resource_code,
             PurchaseOrderItem.unit_price.is_not(None),
+            PurchaseOrderItem.unit_price > 0,
         )
-    ).scalar()
-    n = session.execute(
-        select(func.count()).where(
-            PurchaseOrderItem.resource_code == resource_code,
-            PurchaseOrderItem.unit_price.is_not(None),
-        )
-    ).scalar_one()
-    if median is None or n < 3:
+    ).one()
+    median, n, lo, hi = row
+    if median is None or n < 3 or lo is None or lo <= 0:
         return None
+    if float(hi) / float(lo) > DISPERSION_MAX:
+        return None  # insumo heterogêneo -> não comparar
     return PriceReference(
         value=Decimal(str(median)),
         layer="internal_median_resource",
         snapshot={"layer": "camada_0_interno", "source": "mediana_resource_code",
-                  "resource_code": resource_code, "n": int(n), "value": str(median)},
+                  "resource_code": resource_code, "n": int(n), "value": str(median),
+                  "min": str(lo), "max": str(hi)},
     )
 
 

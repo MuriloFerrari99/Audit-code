@@ -36,6 +36,27 @@ AUTH = base64.b64encode(f"{USER}:{PWD}".encode()).decode()
 
 BRL = lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+# Insumos que NÃO passam por cotação de material (serviço/mão de obra/etc.) —
+# reduzem falso-positivo de R1/R6. Heurística por descrição (acento-insensível).
+NON_MATERIAL = (
+    "mao de obra", "m.o", "servico", "empreitada", "locacao", "aluguel",
+    "alimentacao", "frete", "taxa", "imposto", "medicao", "terceiriz",
+    "consultoria", "honorario", "comissao", "mensalidade", "manutencao",
+    "transporte", "diaria", "hospedagem",
+)
+DISPERSION_MAX = 12  # se max/min do insumo > isto, é heterogêneo → mediana inválida
+
+
+def _norm(s: str) -> str:
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFKD", (s or "").lower())
+                   if not unicodedata.combining(c))
+
+
+def is_non_material(desc: str) -> bool:
+    n = _norm(desc)
+    return any(k in n for k in NON_MATERIAL)
+
 
 def get(url: str) -> dict:
     req = urllib.request.Request(url, headers={"Authorization": f"Basic {AUTH}"})
@@ -101,7 +122,14 @@ def main() -> None:
         med = statistics.median(prices)
         if med <= 0:
             continue
+        # guarda de heterogeneidade: resourceId que mistura coisas diferentes
+        # (preço varia ordens de grandeza) torna a mediana sem sentido -> pula.
+        lo = min(p for p in prices if p > 0) if any(p > 0 for p in prices) else 0
+        if lo > 0 and max(prices) / lo > DISPERSION_MAX:
+            continue
         for up, o, it in obs:
+            if is_non_material(it.get("resourceDescription", "")):
+                continue
             if up > med * 1.10:
                 qty = it.get("quantity") or 1
                 exposed = (up - med) * qty
@@ -166,7 +194,7 @@ def main() -> None:
                     up = ni.get("unitPrice")
                     if pid:
                         quote_suppliers[pid].add(sid)
-                        if up:
+                        if up and up > 0:  # ignora cotação placeholder R$ 0,00
                             quote_min_price[pid] = min(quote_min_price.get(pid, up), up)
 
     # ---- R2 cotação perdida: item do pedido pago acima da cotação mais barata ----
@@ -175,23 +203,33 @@ def main() -> None:
             rid = it.get("resourceId")
             up = it.get("unitPrice")
             best = quote_min_price.get(rid)
-            if rid and up and best and up > best:
-                qty = it.get("quantity") or 1
-                exposed = (up - best) * qty
-                if exposed >= 100:
-                    findings.append(("R2 cotação perdida", exposed,
-                                     f"pedido {o['id']} '{it.get('resourceDescription','')[:38]}' "
-                                     f"pago {BRL(up)}/un vs cotação {BRL(best)}"))
+            if not (rid and up and best and best > 0 and up > best):
+                continue
+            if is_non_material(it.get("resourceDescription", "")):
+                continue
+            if up / best > 30:  # ratio absurdo = produto/unidade diferente, não sobrepreço
+                continue
+            qty = it.get("quantity") or 1
+            exposed = (up - best) * qty
+            if exposed >= 100:
+                findings.append(("R2 cotação perdida", exposed,
+                                 f"pedido {o['id']} '{it.get('resourceDescription','')[:38]}' "
+                                 f"pago {BRL(up)}/un vs cotação {BRL(best)}"))
     for o in orders:
         if (o.get("totalAmount") or 0) <= 50000:
             continue
-        rids = {it.get("resourceId") for it in order_items.get(o["id"], []) if it.get("resourceId")}
+        items = order_items.get(o["id"], [])
+        material = [it for it in items if not is_non_material(it.get("resourceDescription", ""))]
+        if not material:
+            continue  # pedido só de serviço/mão de obra/empreitada → não é "sem concorrência"
+        rids = {it.get("resourceId") for it in material if it.get("resourceId")}
         suppliers = set()
         for rid in rids:
             suppliers |= quote_suppliers.get(rid, set())
         if len(suppliers) < 2:
             findings.append(("R6 sem concorrência", o.get("totalAmount", 0),
-                             f"pedido {o['id']} {BRL(o['totalAmount'])} com {len(suppliers)} fornecedor(es) cotando"))
+                             f"pedido {o['id']} {BRL(o['totalAmount'])} (material) com "
+                             f"{len(suppliers)} fornecedor(es) cotando"))
 
     # ---- resumo ----
     print("\n" + "=" * 60)

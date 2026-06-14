@@ -28,6 +28,7 @@ from app.models.sourcing import (
 )
 from app.models.tenancy import Project
 from app.rules.base import EvidenceDraft, FindingDraft, RuleContext, dedup_key, register
+from app.rules.classify import RATIO_MAX, is_non_material
 from app.rules.references import resolve_price_reference
 
 D = Decimal
@@ -62,6 +63,8 @@ class OverpriceRule:
             )
         ).scalars()
         for item in items:
+            if is_non_material(item.raw_description):
+                continue  # serviço/mão de obra não é sobrepreço de material (A-1)
             order = session.get(PurchaseOrder, item.order_id)
             if order is None:
                 continue
@@ -121,6 +124,8 @@ class LostQuoteRule:
             )
         ).scalars()
         for item in items:
+            if is_non_material(item.raw_description):
+                continue
             order = session.get(PurchaseOrder, item.order_id)
             if order is None:
                 continue
@@ -136,6 +141,7 @@ class LostQuoteRule:
                 .where(
                     key,
                     Quotation.unit_price.is_not(None),
+                    Quotation.unit_price > 0,  # ignora cotação placeholder R$ 0
                     Quotation.unit_price < unit_price,
                 )
                 .order_by(Quotation.unit_price.asc())
@@ -146,6 +152,8 @@ class LostQuoteRule:
             if q.valid_until is not None and order.ordered_at is not None and q.valid_until < order.ordered_at:
                 continue  # cotação expirada na data do pedido
             best = D(str(q.unit_price))
+            if unit_price / best > D(str(RATIO_MAX)):
+                continue  # ratio absurdo = produto/unidade diferente, não sobrepreço
             qty = D(str(item.qty)) if item.qty is not None else ONE
             exposed = (unit_price - best) * qty
             drafts.append(
@@ -337,18 +345,16 @@ class NoCompetitionRule:
             select(PurchaseOrder).where(PurchaseOrder.total.is_not(None), PurchaseOrder.total > relevance)
         ).scalars()
         for order in orders:
-            cat_ids = session.execute(
-                select(PurchaseOrderItem.catalog_item_id).where(
-                    PurchaseOrderItem.order_id == order.id,
-                    PurchaseOrderItem.catalog_item_id.is_not(None),
-                )
+            order_items = session.execute(
+                select(PurchaseOrderItem).where(PurchaseOrderItem.order_id == order.id)
             ).scalars().all()
-            res_codes = session.execute(
-                select(PurchaseOrderItem.resource_code).where(
-                    PurchaseOrderItem.order_id == order.id,
-                    PurchaseOrderItem.resource_code.is_not(None),
-                )
-            ).scalars().all()
+            # só insumos de material: serviço/mão de obra/empreitada não passam
+            # por cotação, não são "sem concorrência" (A-1).
+            material = [it for it in order_items if not is_non_material(it.raw_description)]
+            if not material:
+                continue
+            cat_ids = [it.catalog_item_id for it in material if it.catalog_item_id]
+            res_codes = [it.resource_code for it in material if it.resource_code]
             if not cat_ids and not res_codes:
                 continue
             match_clauses = []
