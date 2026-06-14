@@ -17,6 +17,9 @@ ITEM = {"itemNumber": 1, "resourceId": 555, "resourceCode": "MAT-555",
         "unitOfMeasure": "SC"}
 BILL = {"id": 44059, "creditorId": 1768, "totalInvoiceAmount": 1200.0, "status": "PAID",
         "issueDate": "2026-06-10", "installmentsNumber": 1}
+BUDGET = {"id": 1, "buildingId": 202, "buildingName": "BRAVA GREEN - OBRA",
+          "description": "LIGACOES DEFINITIVAS", "workItemId": 5001, "quantity": 100.0,
+          "measuredQuantity": 130.0, "unitPrice": 90.0, "totalPrice": 9000.0, "unitOfMeasure": "m3"}
 
 
 def test_creditor():
@@ -50,3 +53,13 @@ def test_bill():
     assert r["source_external_id"] == "44059"
     assert r["amount"] == 1200.0
     assert r["creditor_ext"] == "1768"
+
+
+def test_budget_item():
+    r = t.to_budget_item(BUDGET)
+    assert r["source_external_id"] == "202:1"  # chave composta obra:id
+    assert r["building_ext"] == "202"
+    assert r["resource_code"] == "5001"  # workItemId
+    assert r["qty_budgeted"] == 100.0
+    assert r["qty_measured"] == 130.0  # base da R4 (medido vs orçado)
+    assert r["unit_price_budgeted"] == 90.0

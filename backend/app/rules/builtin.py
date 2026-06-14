@@ -236,40 +236,34 @@ class QuantityOverrunRule:
     def evaluate(self, session: Session, ctx: RuleContext) -> list[FindingDraft]:
         tol = D(str(ctx.params.get("tolerance_pct", 0.05)))
         drafts: list[FindingDraft] = []
+        # Orçado vs medido/executado, ambos no próprio item de orçamento
+        # (building-cost-estimation-items: quantity vs measuredQuantity).
         budgets = session.execute(
             select(BudgetItem).where(
-                BudgetItem.catalog_item_id.is_not(None),
                 BudgetItem.qty_budgeted.is_not(None),
+                BudgetItem.qty_measured.is_not(None),
+                BudgetItem.qty_budgeted > 0,
             )
         ).scalars()
         for b in budgets:
-            # qty pedida do mesmo insumo na mesma obra (proxy de atendida — ver nota)
-            ordered = session.execute(
-                select(func.coalesce(func.sum(PurchaseOrderItem.qty), 0))
-                .join(PurchaseOrder, PurchaseOrder.id == PurchaseOrderItem.order_id)
-                .where(
-                    PurchaseOrderItem.catalog_item_id == b.catalog_item_id,
-                    PurchaseOrder.project_id == b.project_id,
-                )
-            ).scalar_one()
-            ordered = D(str(ordered))
             budgeted = D(str(b.qty_budgeted))
-            if ordered <= budgeted * (ONE + tol):
+            measured = D(str(b.qty_measured))
+            if measured <= budgeted * (ONE + tol):
                 continue
             unit = D(str(b.unit_price_budgeted)) if b.unit_price_budgeted else D(0)
-            exposed = (ordered - budgeted) * unit
+            exposed = (measured - budgeted) * unit
             drafts.append(
                 FindingDraft(
                     rule_id=self.id,
                     rule_version=self.version,
-                    dedup_key=dedup_key(self.id, b.project_id, b.catalog_item_id),
+                    dedup_key=dedup_key(self.id, b.id),
                     severity=self.severity_default.value,
                     exposed_amount=Money.of(exposed),
-                    title=f"Estouro de quantidade: {ordered} vs orçado {budgeted}",
+                    title=f"Estouro de quantidade: medido {measured} vs orçado {budgeted}",
                     project_id=str(b.project_id) if b.project_id else None,
                     evidence=[
                         EvidenceDraft("budget_item", "orcamento", str(b.id),
-                                      f"{b.raw_description}: orçado {budgeted} {b.unit}"),
+                                      f"{b.raw_description}: orçado {budgeted} {b.unit}, medido {measured}"),
                     ],
                     config_snapshot={"tolerance_pct": str(tol)},
                 )

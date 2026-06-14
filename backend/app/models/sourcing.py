@@ -57,6 +57,7 @@ class BudgetItem(Base, TenantScopedMixin, SourcedMixin):
     raw_description: Mapped[str] = mapped_column(String(500), nullable=False)
     unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
     qty_budgeted: Mapped[float | None] = mapped_column(QTY, nullable=True)
+    qty_measured: Mapped[float | None] = mapped_column(QTY, nullable=True)  # medida/executada
     unit_price_budgeted: Mapped[float | None] = mapped_column(MONEY, nullable=True)
     total_budgeted: Mapped[float | None] = mapped_column(MONEY, nullable=True)
     __table_args__ = (_natural_key("budget_item"),)

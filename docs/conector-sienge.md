@@ -131,10 +131,14 @@ class SourceConnector(Protocol):
 
 **Watermark incremental:** usar `modifiedAt`/`lastModificationDate`/`lastModification` (existem nos payloads).
 
-**Lacunas abertas (precisam de mais descoberta/decisão):**
-1. **Orçamento (R4):** achar o recurso correto de custo unitário por obra (provável via `cost-databases` + sub-recurso, ou outro módulo).
-2. **`deliveries-attended`:** obter um pedido com entrega para fixar o shape (amostras testadas vieram vazias).
-3. **`purchase-requests`:** sem listagem; confirmar que fica fora do MVP.
+**Orçamento (R4) — ENCONTRADO:** `bulk-data/v1/building-cost-estimation-items` (5.288 itens p/ a obra 202). Campos: `buildingId`, `description`, `quantity` (orçada), **`measuredQuantity` (medida/executada)**, `unitPrice`, `totalPrice`, `unitOfMeasure`, `workItemId` (chave do serviço/insumo), `wbsCode`, `percentComplete`. → **R4 fica auto-contido**: `measuredQuantity` vs `quantity` (sem join com pedidos).
+
+**Cotações (R2/R6) — estrutura mapeada:** `purchaseQuotationSuppliers[].negotiations[].negotiationItems[]` com `productId`, `unitPrice`, `quotedQuantity`, `negotiatedQuantity`, `selectedOption`; negotiation tem `sellersName`, `totalValue`. Contagem de fornecedores distintos = `len(purchaseQuotationSuppliers)` (R6); menor `unitPrice` por `productId` = melhor cotação (R2). **Questão aberta:** confirmar se `productId` (cotação) == `resourceId` (item do pedido) para casar R2; alternativamente usar o aninhado `purchaseQuotations` do item do pedido.
+
+**Lacunas restantes:**
+1. **`deliveries-attended`:** obter um pedido com entrega para fixar o shape (amostras vieram vazias) — R4 agora não depende disso.
+2. **`purchase-requests`:** sem listagem (405); confirmar fora do MVP.
+3. **`supply-contracts`:** existe (400 sem params) — relevante p/ dimensão 5 (contrato), Fase 2.
 
 ## 8. Tratamento de erros de dado
 

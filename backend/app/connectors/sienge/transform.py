@@ -51,6 +51,23 @@ def to_order_item(p: dict) -> dict:
     }
 
 
+def to_budget_item(p: dict) -> dict:
+    bid = _s(p.get("buildingId"))
+    # id do item pode repetir entre obras -> chave composta obra:id
+    ext = f"{bid}:{p.get('id')}" if bid else _s(p.get("id"))
+    return {
+        "source_external_id": ext,
+        "building_ext": bid,
+        "resource_code": _s(p.get("workItemId")),
+        "raw_description": p.get("description"),
+        "unit": p.get("unitOfMeasure"),
+        "qty_budgeted": p.get("quantity"),
+        "qty_measured": p.get("measuredQuantity"),
+        "unit_price_budgeted": p.get("unitPrice"),
+        "total_budgeted": p.get("totalPrice"),
+    }
+
+
 def to_bill(p: dict) -> dict:
     return {
         "source_external_id": _s(p.get("id")),

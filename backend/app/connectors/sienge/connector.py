@@ -53,6 +53,7 @@ ENDPOINTS: dict[EntityKind, EndpointSpec] = {
     EntityKind.PURCHASE_ORDER: EndpointSpec("/purchase-orders"),
     EntityKind.BILL: EndpointSpec("/bills", needs_date=True),
     EntityKind.QUOTATION: EndpointSpec("/purchase-quotations", bulk=True, needs_date=True, list_key="data"),
+    EntityKind.BUDGET_ITEM: EndpointSpec("/building-cost-estimation-items", bulk=True, list_key="data"),
 }
 
 
@@ -107,21 +108,33 @@ class SiengeConnector:
     def _pull_live(self, entity: EntityKind, cursor: PullCursor) -> Iterator[RawRecord]:
         assert self._client is not None, "chame authenticate() antes do pull"
         spec = ENDPOINTS[entity]
-        limit = 200
-        offset = (cursor.page - 1) * limit
-        params: dict = {"limit": limit, "offset": offset}
+        params: dict = {}
         if spec.needs_date:
             params.update(self._date_window(cursor))
-        # paginação simples por offset até esgotar
+
+        def emit(rows):
+            for row in rows:
+                ext = str(row.get("id") or row.get("purchaseQuotationId") or row.get("documentNumber"))
+                yield RawRecord(entity=entity, source_external_id=ext, payload=row)
+
+        if spec.bulk:
+            # bulk-data retorna o conjunto completo em uma chamada (sem offset).
+            resp = self._client.get(self._base(spec), params=params)
+            data = resp.json()
+            rows = data.get(spec.list_key, []) if isinstance(data, dict) else data
+            yield from emit(rows or [])
+            return
+
+        # REST: paginação por offset até esgotar.
+        limit = 200
+        offset = (cursor.page - 1) * limit
         while True:
-            resp = self._client.get(self._base(spec), params={**params, "offset": offset})
+            resp = self._client.get(self._base(spec), params={**params, "limit": limit, "offset": offset})
             data = resp.json()
             rows = data.get(spec.list_key, []) if isinstance(data, dict) else data
             if not rows:
                 break
-            for row in rows:
-                ext = str(row.get("id") or row.get("purchaseQuotationId") or row.get("documentNumber"))
-                yield RawRecord(entity=entity, source_external_id=ext, payload=row)
+            yield from emit(rows)
             if len(rows) < limit:
                 break
             offset += limit

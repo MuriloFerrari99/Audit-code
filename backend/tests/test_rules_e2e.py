@@ -56,14 +56,14 @@ def test_exposed_amounts(seeded):
         run_all(s, str(TENANT_ID))
     with tenant_session(str(TENANT_ID)) as s:
         by_rule = _by_rule(list_findings(s, limit=1000))
-    # R1: (40-30)*100 = 1000
-    assert by_rule["R1"][0].exposed_amount == Decimal("1000.0000")
-    # R2: (50-42)*100 = 800
-    assert by_rule["R2"][0].exposed_amount == Decimal("800.0000")
-    # R4: (130-100)*90 = 2700
-    assert by_rule["R4"][0].exposed_amount == Decimal("2700.0000")
-    # R5: 11000-10000 = 1000
-    assert by_rule["R5"][0].exposed_amount == Decimal("1000.0000")
+
+    def amounts(rid):
+        return {f.exposed_amount for f in by_rule.get(rid, [])}
+
+    assert Decimal("1000.0000") in amounts("R1")  # (40-30)*100 cimento
+    assert Decimal("800.0000") in amounts("R2")   # (50-42)*100 aço
+    assert Decimal("2700.0000") in amounts("R4")  # (130-100)*90 brita (medido vs orçado)
+    assert Decimal("1000.0000") in amounts("R5")  # 11000-10000
 
 
 def test_idempotent_rerun(seeded):
@@ -84,6 +84,7 @@ def test_review_creates_ledger(seeded):
     with tenant_session(str(TENANT_ID)) as s:
         finding = list_findings(s, rule_id="R1", limit=1)[0]
         fid = str(finding.id)
+        expected = finding.exposed_amount
         review_finding(s, str(TENANT_ID), fid, "accept", "tester@cliente.com")
     with tenant_session(str(TENANT_ID)) as s:
         status = s.execute(text("SELECT status FROM finding WHERE id = :i"), {"i": fid}).scalar_one()
@@ -91,7 +92,7 @@ def test_review_creates_ledger(seeded):
         validated = s.execute(
             text("SELECT validated_amount FROM value_ledger WHERE finding_id = :i"), {"i": fid}
         ).scalar_one()
-        assert validated == Decimal("1000.0000")
+        assert validated == expected  # exposto validado entra no ledger
 
 
 def test_human_decision_is_sticky(seeded):

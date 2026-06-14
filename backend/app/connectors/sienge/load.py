@@ -22,7 +22,7 @@ from app.connectors.sienge import transform as T
 from app.connectors.sienge.connector import SiengeConnector
 from app.core.db import tenant_session
 from app.core.logging import get_logger
-from app.models.sourcing import Bill, Creditor, PurchaseOrder, PurchaseOrderItem
+from app.models.sourcing import Bill, BudgetItem, Creditor, PurchaseOrder, PurchaseOrderItem
 from app.models.tenancy import Project
 
 log = get_logger("connector.sienge.load")
@@ -42,7 +42,8 @@ def load_canonical(
     """Carrega o canônico. max_orders limita a 1ª carga (a base tem milhares de
     pedidos, cada um com um sub-call de itens)."""
     connector.authenticate()
-    summary = {"creditor": 0, "purchase_order": 0, "purchase_order_item": 0, "bill": 0}
+    summary = {"creditor": 0, "purchase_order": 0, "purchase_order_item": 0,
+               "bill": 0, "budget_item": 0}
 
     with tenant_session(tenant_id) as s:
         # 1) Credores
@@ -132,6 +133,30 @@ def load_canonical(
                         qty=_dec(fi["qty"]), unit_price=_dec(fi["unit_price"]), unit=fi["unit"],
                     ))
                     summary["purchase_order_item"] += 1
+
+        # 3b) Orçamento (building-cost-estimation-items): orçado vs medido (R4)
+        for raw in connector.pull(EntityKind.BUDGET_ITEM, PullCursor()):
+            f = T.to_budget_item(raw.payload)
+            ext = f["source_external_id"]
+            if not ext:
+                continue
+            b = s.execute(
+                select(BudgetItem).where(BudgetItem.source == "sienge",
+                                         BudgetItem.source_external_id == ext)
+            ).scalar_one_or_none()
+            if b is None:
+                b = BudgetItem(tenant_id=tenant_id, source="sienge", source_external_id=ext,
+                               raw_description=f["raw_description"] or "(sem descrição)",
+                               content_hash=_hash(f))
+                s.add(b)
+                summary["budget_item"] += 1
+            b.project_id = get_project(f["building_ext"])
+            b.resource_code = f["resource_code"]
+            b.unit = f["unit"]
+            b.qty_budgeted = _dec(f["qty_budgeted"])
+            b.qty_measured = _dec(f["qty_measured"])
+            b.unit_price_budgeted = _dec(f["unit_price_budgeted"])
+            b.total_budgeted = _dec(f["total_budgeted"])
 
         # 4) Títulos (resolve credor + vínculo com pedido via forecastBill)
         for raw in connector.pull(EntityKind.BILL, PullCursor()):

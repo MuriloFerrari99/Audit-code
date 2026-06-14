@@ -157,18 +157,12 @@ def seed() -> dict:
                                            id=oid, project_id=project_id, creditor_id=forn_b,
                                            total=D("48000"), ordered_at=_dt(25 - i * 5))))
 
-        # --- R4: estouro de quantidade (brita orçada 100, pedida 130) ---
+        # --- R4: estouro de quantidade (brita orçada 100, MEDIDA 130) ---
         s.add(BudgetItem(**_sourced(tenant_id=TENANT_ID, source_external_id="BUD-1",
                                     project_id=project_id, catalog_item_id=brita,
                                     raw_description="Brita 1", unit="m3", qty_budgeted=D("100"),
+                                    qty_measured=D("130"),
                                     unit_price_budgeted=D("90"), total_budgeted=D("9000"))))
-        o4 = uuid.uuid4()
-        s.add(PurchaseOrder(**_sourced(tenant_id=TENANT_ID, source_external_id="PO-4", id=o4,
-                                       project_id=project_id, creditor_id=forn_a,
-                                       total=D("11700"), ordered_at=_dt(10))))
-        s.add(PurchaseOrderItem(tenant_id=TENANT_ID, order_id=o4, catalog_item_id=brita,
-                                raw_description="Brita 1", qty=D("130"),
-                                unit_price=D("90"), total=D("11700")))
 
         # --- R5: divergência pedido->pagamento (pedido 10000, pago 11000) ---
         o5 = uuid.uuid4()
@@ -179,23 +173,24 @@ def seed() -> dict:
                               creditor_id=forn_a, amount=D("11000"), status="paid",
                               paid_at=_dt(5))))
 
-        # --- R6: sem concorrência (pedido 80000 > 50000, item sem cotação concorrente) ---
+        # --- R6: sem concorrência (pedido 72000 > 50000, sem cotação concorrente) ---
+        # unit_price = referência (90) p/ NÃO disparar R1; brita sem cotação p/ NÃO disparar R2.
         o6 = uuid.uuid4()
         s.add(PurchaseOrder(**_sourced(tenant_id=TENANT_ID, source_external_id="PO-6", id=o6,
                                        project_id=project_id, creditor_id=forn_a,
-                                       total=D("80000"), ordered_at=_dt(8))))
+                                       total=D("72000"), ordered_at=_dt(8))))
         s.add(PurchaseOrderItem(tenant_id=TENANT_ID, order_id=o6, catalog_item_id=brita,
                                 raw_description="Brita 1 - grande volume", qty=D("800"),
-                                unit_price=D("100"), total=D("80000")))
+                                unit_price=D("90"), total=D("72000")))
         # autorização (alçada vigente, p/ contexto de R3/R6)
         s.add(OrderAuthorization(tenant_id=TENANT_ID, order_id=o6, level="diretoria",
                                  authorized_by="diretor", authorized_at=_dt(8),
                                  threshold_at_time=D("50000")))
 
-        # nota de atendimento (para futura dimensão fiscal / R4 com qty atendida)
-        s.add(Invoice(**_sourced(tenant_id=TENANT_ID, source_external_id="INV-1", order_id=o4,
-                                 creditor_id=forn_a, number="123", qty_delivered=D("130"),
-                                 unit_price_invoiced=D("90"), total_invoiced=D("11700"),
+        # nota de atendimento (para futura dimensão fiscal) — vinculada ao pedido o1
+        s.add(Invoice(**_sourced(tenant_id=TENANT_ID, source_external_id="INV-1", order_id=o1,
+                                 creditor_id=forn_a, number="123", qty_delivered=D("100"),
+                                 unit_price_invoiced=D("40"), total_invoiced=D("4000"),
                                  issued_at=_dt(6))))
 
     return {"tenant_id": str(TENANT_ID), "email": SEED_EMAIL, "password": SEED_PASSWORD}
