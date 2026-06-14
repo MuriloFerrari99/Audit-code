@@ -107,6 +107,10 @@ export const api = {
     }),
   monthlyReport: () => request<MonthlyReport>("/reports/monthly"),
   dossier: (id: string) => request<Record<string, unknown>>(`/findings/${id}/dossier`),
+  quality: () =>
+    request<{ total: number; by_code: Record<string, number>; issues: import("./types").QualityIssue[] }>(
+      "/quality",
+    ),
 };
 
 export { ApiError };

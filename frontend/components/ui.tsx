@@ -85,6 +85,26 @@ export function StatusBadge({ status }: { status: FindingStatus }) {
   );
 }
 
+export function ConfidenceBadge({ value }: { value: string | null }) {
+  if (value == null) return null;
+  const n = Number(value);
+  const [label, cls] =
+    n >= 0.75 ? ["alta", "bg-ok/10 text-ok"] : n >= 0.55 ? ["média", "bg-sev-medium/10 text-sev-medium"] : ["baixa", "bg-surface-alt text-ink-faint"];
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${cls}`} title={`confiança ${n}`}>
+      conf. {label}
+    </span>
+  );
+}
+
+export function DimBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-block rounded-full border border-surface-line px-2 py-0.5 text-xs text-ink-soft">
+      {label}
+    </span>
+  );
+}
+
 export function Money({ value }: { value: string | null }) {
   if (value == null) return <span className="text-ink-faint">—</span>;
   const n = Number(value);

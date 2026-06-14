@@ -20,6 +20,7 @@ export interface Finding {
   severity: Severity;
   status: FindingStatus;
   exposed_amount: string | null;
+  confidence: string | null;
   title: string | null;
   project_id: string | null;
   created_at: string;
@@ -46,10 +47,44 @@ export interface MonthlyReport {
 }
 
 export const RULE_NAMES: Record<string, string> = {
+  // Dimensão 1 — Preço/governança
   R1: "Sobrepreço",
   R2: "Cotação perdida",
   R3: "Fracionamento",
   R4: "Estouro de quantidade",
   R5: "Divergência pedido→pagamento",
   R6: "Sem concorrência",
+  // Dimensão 2 — Fiscal
+  F1: "Nota acima do pedido",
+  F2: "Nota inconsistente",
+  F3: "Pagamento acima da nota",
+  // Dimensão 4 — Integridade do fornecedor
+  I1: "Fornecedor sancionado",
+  I2: "CNPJ não-ativo",
+  I3: "Empresa recém-aberta de alto valor",
+  I4: "Sócio em comum",
+  I5: "Fornecedor não verificado",
 };
+
+export const RULE_DIMENSION: Record<string, number> = {
+  R1: 1, R2: 1, R3: 1, R4: 1, R6: 1,
+  F1: 2, F2: 2, F3: 2,
+  R5: 3,
+  I1: 4, I2: 4, I3: 4, I4: 4, I5: 4,
+};
+
+export const DIMENSION_LABELS: Record<number, string> = {
+  1: "Preço & Governança",
+  2: "Fiscal",
+  3: "Pagamento",
+  4: "Integridade",
+};
+
+export interface QualityIssue {
+  code: string;
+  severity: string;
+  entity_type: string;
+  entity_id: string | null;
+  message: string;
+  action: string;
+}

@@ -8,6 +8,7 @@ import { setToken } from "@/lib/api";
 const NAV = [
   { href: "/", label: "Visão geral" },
   { href: "/findings", label: "Achados" },
+  { href: "/quality", label: "Higiene de dados" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
