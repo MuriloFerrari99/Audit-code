@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, setToken } from "@/lib/api";
 import { Button, Card, Field } from "@/components/ui";
@@ -56,6 +57,10 @@ export default function LoginPage() {
             {loading ? "Entrando…" : "Entrar"}
           </Button>
         </form>
+        <p className="mt-4 text-center text-sm text-ink-soft">
+          Novo por aqui?{" "}
+          <Link href="/signup" className="text-brand hover:underline">Criar conta e conectar o Sienge</Link>
+        </p>
       </Card>
     </div>
   );

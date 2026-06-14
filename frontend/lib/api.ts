@@ -60,6 +60,40 @@ export const api = {
     }
     return (await res.json()) as TokenResponse;
   },
+  async signup(email: string, password: string, companyName: string): Promise<TokenResponse> {
+    const res = await fetch(`${BASE}/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, company_name: companyName }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({ detail: "falha no cadastro" }));
+      throw new ApiError(res.status, d.detail);
+    }
+    return (await res.json()) as TokenResponse;
+  },
+  // onboarding
+  onbTest: (subdomain: string, user: string, password: string) =>
+    request<{ ok: boolean; creditors?: number; orders?: number; reason?: string }>(
+      "/onboarding/test",
+      { method: "POST", body: JSON.stringify({ subdomain, user, password }) },
+    ),
+  onbConnect: (subdomain: string, user: string, password: string) =>
+    request<{ ok: boolean }>("/onboarding/connect", {
+      method: "POST",
+      body: JSON.stringify({ subdomain, user, password }),
+    }),
+  onbRun: () => request<{ state: string }>("/onboarding/run", { method: "POST" }),
+  onbStatus: () =>
+    request<{ state: string; step?: string; found?: Record<string, number>; total_findings?: number; reason?: string }>(
+      "/onboarding/status",
+    ),
+  assistant: (question: string) =>
+    fetch(`${BASE}/onboarding/assistant`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    }).then((r) => r.json() as Promise<{ answer: string }>),
   runRules: () => request<{ found: Record<string, number> }>("/rules/run", { method: "POST" }),
   listFindings: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();

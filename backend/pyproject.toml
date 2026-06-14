@@ -23,6 +23,7 @@ dependencies = [
     "anthropic>=0.40",
     "python-multipart>=0.0.9",
     "prometheus-client>=0.20",
+    "cryptography>=42.0",
 ]
 
 [project.optional-dependencies]

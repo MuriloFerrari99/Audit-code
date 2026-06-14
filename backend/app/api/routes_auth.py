@@ -6,16 +6,41 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 
 from app.api.deps import get_current_user
-from app.api.schemas import CurrentUser, LoginIn, RefreshIn, TokenOut
-from app.core.db import SessionLocal
+from app.api.schemas import CurrentUser, LoginIn, RefreshIn, SignupIn, TokenOut
+from app.core.db import SessionLocal, admin_session
 from app.core.security import (
     decode_token,
+    hash_password,
     make_access_token,
     make_refresh_token,
     verify_password,
 )
+from app.models import Company, Membership, Role, Tenant, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/signup", response_model=TokenOut)
+def signup(body: SignupIn) -> TokenOut:
+    """Provisiona empresa (tenant + company) + usuário owner na hora (self-serve)."""
+    with admin_session() as s:
+        if s.execute(text("SELECT 1 FROM app_user WHERE email = :e"), {"e": body.email}).first():
+            raise HTTPException(status.HTTP_409_CONFLICT, "e-mail já cadastrado")
+        tenant = Tenant(name=body.company_name)
+        s.add(tenant)
+        s.flush()
+        s.add(Company(tenant_id=tenant.id, name=body.company_name, cnpj=""))
+        user = User(email=body.email, password_hash=hash_password(body.password))
+        s.add(user)
+        s.flush()
+        s.add(Membership(user_id=user.id, tenant_id=tenant.id, role=Role.OWNER.value))
+        uid, tid = str(user.id), str(tenant.id)
+    return TokenOut(
+        access_token=make_access_token(uid, tid, Role.OWNER.value),
+        refresh_token=make_refresh_token(uid),
+        tenant_id=tid,
+        role=Role.OWNER.value,
+    )
 
 
 def _resolve_membership(session, user_id: str, tenant_id: str | None):

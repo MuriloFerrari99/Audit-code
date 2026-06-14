@@ -11,11 +11,11 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index, String, func
+from sqlalchemy import DateTime, Index, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import TENANT_SCOPED, Base, _uuid
+from app.models.base import TENANT_SCOPED, Base, TimestampMixin, _uuid
 
 
 class RawRecord(Base):
@@ -68,5 +68,22 @@ class OutboxEvent(Base):
     __table_args__ = (Index("ix_outbox_unprocessed", "processed_at"),)
 
 
-# Todas têm tenant_id e devem ter RLS.
+class TenantSecret(Base, TimestampMixin):
+    """Segredo por tenant (ex.: credencial Sienge), CRIPTOGRAFADO em repouso.
+
+    Tabela de plataforma — acessada pelo role dono com filtro explícito de tenant;
+    valor cifrado com Fernet (app.core.crypto). Não guardar credencial em texto.
+    """
+
+    __tablename__ = "tenant_secret"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    path: Mapped[str] = mapped_column(String(200), nullable=False)
+    value_enc: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (UniqueConstraint("tenant_id", "path", name="uq_tenant_secret"),)
+
+
+# Todas têm tenant_id e devem ter RLS (exceto tenant_secret, que é plataforma).
 TENANT_SCOPED.update({"raw_record", "entity_history", "outbox_event"})

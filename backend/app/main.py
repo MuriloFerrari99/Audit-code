@@ -11,6 +11,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api.routes_auth import router as auth_router
 from app.api.routes_findings import router as findings_router
+from app.api.routes_onboarding import router as onboarding_router
 from app.api.routes_reports import router as reports_router
 from app.core.config import get_settings
 from app.core.db import db_healthy
@@ -39,6 +40,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(findings_router)
 app.include_router(reports_router)
+app.include_router(onboarding_router)
 
 
 @app.get("/metrics")

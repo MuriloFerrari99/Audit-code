@@ -56,3 +56,19 @@ class FindingOut(BaseModel):
 class ReviewIn(BaseModel):
     decision: str  # accept | dismiss | escalate
     reason: str | None = None
+
+
+class SignupIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+    company_name: str
+
+
+class SiengeCredsIn(BaseModel):
+    subdomain: str
+    user: str
+    password: str
+
+
+class AssistantIn(BaseModel):
+    question: str
