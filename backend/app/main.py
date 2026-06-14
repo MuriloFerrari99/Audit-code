@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api.routes_auth import router as auth_router
@@ -23,6 +25,17 @@ log = get_logger("api")
 register_builtin_rules()
 
 app = FastAPI(title="Auditoria de Gastos — API", version="0.1.0")
+
+# CORS para o frontend (origens configuráveis; default dev localhost:3000).
+_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _origins],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(auth_router)
 app.include_router(findings_router)
 app.include_router(reports_router)
