@@ -1,0 +1,40 @@
+<!-- @dsCard group="Onboarding" -->
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Onboarding — conectar Sienge (com prova ao vivo)</title><link rel="stylesheet" href="_base.css"></head>
+<body>
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;max-width:860px">
+  <div class="card">
+    <div class="h" style="font-size:18px">Conecte seu Sienge</div>
+    <div class="muted" style="font-size:14px;margin-top:4px">Use um usuário de API <b>somente leitura</b>. Não escrevemos nada no seu ERP.</div>
+    <div style="margin-top:16px">
+      <label class="label">Subdomínio</label><input class="input" value="alumbra" readonly>
+    </div>
+    <div style="margin-top:12px">
+      <label class="label">Usuário de API</label><input class="input" value="alumbra-murilo" readonly>
+    </div>
+    <div style="margin-top:12px">
+      <label class="label">Senha de API</label><input class="input" type="password" value="********" readonly>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn btn-secondary">Testar conexão</button>
+      <span style="color:var(--ok);font-size:14px">✓ Conectado — 3.390 fornecedores, 7.206 pedidos</span>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <button class="btn btn-primary">Conectar e auditar →</button>
+      <div class="faint" style="margin-top:8px">Credencial guardada criptografada e isolada por empresa.</div>
+    </div>
+  </div>
+  <div class="card" style="display:flex;flex-direction:column">
+    <div class="muted" style="font-size:14px;font-weight:500">Assistente de onboarding</div>
+    <div style="margin-top:10px;background:var(--surface-alt);border-radius:8px;padding:10px;font-size:13px">
+      Posso ajudar a conectar o Sienge. Pergunte: onde gero a chave de API? é seguro? o que vocês acessam?
+    </div>
+    <div style="margin-top:8px;text-align:right">
+      <span style="display:inline-block;background:var(--brand);color:#fff;border-radius:8px;padding:8px 10px;font-size:13px">Onde gero a chave?</span>
+    </div>
+    <div style="margin-top:auto;display:flex;gap:8px;padding-top:10px">
+      <input class="input" placeholder="Tire sua dúvida…"><button class="btn btn-primary">Enviar</button>
+    </div>
+  </div>
+</div>
+</body></html>
