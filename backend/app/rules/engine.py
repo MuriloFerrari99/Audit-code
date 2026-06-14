@@ -17,6 +17,7 @@ from app.core.logging import get_logger
 from app.core.timeutils import now_utc
 from app.models.findings import Finding, FindingEvidence, FindingStatus, RuleConfig
 from app.rules.base import FindingDraft, Rule, RuleContext, registry
+from app.rules.confidence import score as confidence_score
 
 log = get_logger("rules")
 
@@ -62,6 +63,7 @@ def upsert_finding(session: Session, tenant_id: str, draft: FindingDraft) -> Fin
         select(Finding).where(Finding.dedup_key == draft.dedup_key)
     ).scalar_one_or_none()
     amount = draft.exposed_amount.amount if draft.exposed_amount else None
+    conf = confidence_score(draft.rule_id, draft.reference_snapshot)
 
     if existing is None:
         finding = Finding(
@@ -73,6 +75,7 @@ def upsert_finding(session: Session, tenant_id: str, draft: FindingDraft) -> Fin
             severity=draft.severity,
             status=FindingStatus.OPEN.value,
             exposed_amount=amount,
+            confidence=conf,
             reference_snapshot=draft.reference_snapshot,
             config_snapshot=draft.config_snapshot,
             title=draft.title,
@@ -84,6 +87,7 @@ def upsert_finding(session: Session, tenant_id: str, draft: FindingDraft) -> Fin
 
     # Atualiza métricas sempre; status só se NÃO houver decisão humana.
     existing.exposed_amount = amount
+    existing.confidence = conf
     existing.severity = draft.severity
     existing.title = draft.title
     existing.reference_snapshot = draft.reference_snapshot

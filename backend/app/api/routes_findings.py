@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -11,6 +13,7 @@ from app.core.errors import DomainError
 from app.core.metrics import findings_emitted_total, rule_runs_total
 from app.findings.service import get_evidence, list_findings, review_finding
 from app.models.findings import Role
+from app.quality.checks import run_quality
 from app.rules.engine import run_all
 
 router = APIRouter(tags=["findings"])
@@ -23,6 +26,7 @@ def _to_out(finding, evidence=None) -> FindingOut:
         severity=finding.severity,
         status=finding.status,
         exposed_amount=finding.exposed_amount,
+        confidence=finding.confidence,
         title=finding.title,
         project_id=str(finding.project_id) if finding.project_id else None,
         created_at=finding.created_at,
@@ -46,6 +50,17 @@ def trigger_rules(
         if n:
             findings_emitted_total.labels(rule_id=rule_id).inc(n)
     return {"tenant_id": user.tenant_id, "found": summary}
+
+
+@router.get("/quality")
+def quality(db: Session = Depends(get_tenant_db)) -> dict:
+    """Higiene de Dados: lançamentos a checar/corrigir no Sienge (Módulo A)."""
+    res = run_quality(db)
+    return {
+        "total": res["total"],
+        "by_code": res["by_code"],
+        "issues": [asdict(i) for i in res["issues"][:200]],
+    }
 
 
 @router.get("/findings", response_model=list[FindingOut])

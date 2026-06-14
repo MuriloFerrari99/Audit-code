@@ -45,6 +45,8 @@ class Finding(Base, TenantScopedMixin):
     severity: Mapped[str] = mapped_column(String(10), default=Severity.MEDIUM.value, nullable=False)
     status: Mapped[str] = mapped_column(String(12), default=FindingStatus.OPEN.value, nullable=False)
     exposed_amount: Mapped[float | None] = mapped_column(MONEY, nullable=True)
+    # Score de confiança (Módulo B): baixo -> "a investigar", não vai p/ cliente.
+    confidence: Mapped[float | None] = mapped_column(Numeric(4, 3), nullable=True)
     # Explicabilidade/reprodutibilidade (ADR-07):
     reference_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     config_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

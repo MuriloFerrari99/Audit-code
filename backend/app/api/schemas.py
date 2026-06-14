@@ -47,6 +47,7 @@ class FindingOut(BaseModel):
     severity: str
     status: str
     exposed_amount: Decimal | None = None
+    confidence: Decimal | None = None
     title: str | None = None
     project_id: str | None = None
     created_at: datetime
