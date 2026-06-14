@@ -51,6 +51,45 @@ def to_order_item(p: dict) -> dict:
     }
 
 
+def to_quotation_rows(p: dict) -> list[dict]:
+    """Decompõe a cotação aninhada em linhas (fornecedor × insumo × preço).
+
+    Preço fica em purchaseQuotationSuppliers[].negotiations[].negotiationItems[].
+    `resource_code` = productId (ASSUNÇÃO: mesmo namespace do resourceId do item
+    do pedido — validar com dado real). source_external_id composto garante dedup.
+    """
+    q_ext = _s(p.get("purchaseQuotationId"))
+    deadline = p.get("responseDeadline")
+    # mapa productId -> descrição (vem nos itens da cotação)
+    desc: dict[str, str] = {}
+    for it in p.get("purchaseQuotationItems") or []:
+        pid = _s(it.get("productId"))
+        if pid:
+            desc[pid] = it.get("productDescription") or ""
+
+    rows: list[dict] = []
+    for sup in p.get("purchaseQuotationSuppliers") or []:
+        sup_ext = _s(sup.get("supplierId"))
+        for neg in sup.get("negotiations") or []:
+            valid = neg.get("expirationDate") or deadline
+            for ni in neg.get("negotiationItems") or []:
+                pid = _s(ni.get("productId"))
+                if pid is None or ni.get("unitPrice") is None:
+                    continue
+                rows.append({
+                    "source_external_id": f"{q_ext}:{sup_ext}:{pid}",
+                    "quotation_ext": q_ext,
+                    "supplier_ext": sup_ext,
+                    "resource_code": pid,
+                    "unit_price": ni.get("unitPrice"),
+                    "qty": ni.get("negotiatedQuantity") or ni.get("quotedQuantity"),
+                    "valid_until": valid,
+                    "raw_description": desc.get(pid) or "(cotação)",
+                    "selected": ni.get("selectedOption"),
+                })
+    return rows
+
+
 def to_budget_item(p: dict) -> dict:
     bid = _s(p.get("buildingId"))
     # id do item pode repetir entre obras -> chave composta obra:id

@@ -67,6 +67,7 @@ class Quotation(Base, TenantScopedMixin, SourcedMixin):
     __tablename__ = "quotation"
     creditor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     catalog_item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    resource_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     raw_description: Mapped[str] = mapped_column(String(500), nullable=False)
     qty: Mapped[float | None] = mapped_column(QTY, nullable=True)
     unit_price: Mapped[float | None] = mapped_column(MONEY, nullable=True)

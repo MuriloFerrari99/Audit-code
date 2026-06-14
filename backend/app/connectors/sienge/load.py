@@ -22,7 +22,14 @@ from app.connectors.sienge import transform as T
 from app.connectors.sienge.connector import SiengeConnector
 from app.core.db import tenant_session
 from app.core.logging import get_logger
-from app.models.sourcing import Bill, BudgetItem, Creditor, PurchaseOrder, PurchaseOrderItem
+from app.models.sourcing import (
+    Bill,
+    BudgetItem,
+    Creditor,
+    PurchaseOrder,
+    PurchaseOrderItem,
+    Quotation,
+)
 from app.models.tenancy import Project
 
 log = get_logger("connector.sienge.load")
@@ -43,7 +50,7 @@ def load_canonical(
     pedidos, cada um com um sub-call de itens)."""
     connector.authenticate()
     summary = {"creditor": 0, "purchase_order": 0, "purchase_order_item": 0,
-               "bill": 0, "budget_item": 0}
+               "bill": 0, "budget_item": 0, "quotation": 0}
 
     with tenant_session(tenant_id) as s:
         # 1) Credores
@@ -174,6 +181,27 @@ def load_canonical(
             bill.status = f["status"]
             bill.creditor_id = creditor_map.get(f["creditor_ext"] or "")
             bill.order_id = forecast_to_order.get(ext)
+
+        # 5) Cotações (decompostas: fornecedor × insumo × preço) — R2/R6
+        for raw in connector.pull(EntityKind.QUOTATION, PullCursor()):
+            for r in T.to_quotation_rows(raw.payload):
+                ext = r["source_external_id"]
+                if not ext:
+                    continue
+                q = s.execute(
+                    select(Quotation).where(Quotation.source == "sienge",
+                                            Quotation.source_external_id == ext)
+                ).scalar_one_or_none()
+                if q is None:
+                    q = Quotation(tenant_id=tenant_id, source="sienge", source_external_id=ext,
+                                  raw_description=r["raw_description"], content_hash=_hash(r))
+                    s.add(q)
+                    summary["quotation"] += 1
+                q.resource_code = r["resource_code"]
+                q.unit_price = _dec(r["unit_price"])
+                q.qty = _dec(r["qty"])
+                q.valid_until = _parse_dt(r["valid_until"])
+                q.creditor_id = creditor_map.get(r["supplier_ext"] or "")
 
     log.info("load.canonical.done", **summary)
     return summary

@@ -55,6 +55,38 @@ def test_bill():
     assert r["creditor_ext"] == "1768"
 
 
+QUOTATION = {
+    "purchaseQuotationId": 555,
+    "responseDeadline": "2026-06-01",
+    "purchaseQuotationItems": [{"purchaseQuotationItemId": 1, "productId": 7975,
+                               "productDescription": "VERGALHAO 10MM"}],
+    "purchaseQuotationSuppliers": [
+        {"supplierId": 1768, "negotiations": [
+            {"negotiationId": 1, "sellersName": "Amaral", "totalValue": 123390.0,
+             "expirationDate": None, "negotiationItems": [
+                 {"purchaseQuotationItemId": 1, "productId": 7975, "quotedQuantity": 450.0,
+                  "negotiatedQuantity": 200.0, "unitPrice": 274.2, "selectedOption": False}]}]},
+        {"supplierId": 1900, "negotiations": [
+            {"negotiationId": 2, "sellersName": "Casas", "totalValue": 100000.0,
+             "expirationDate": "2026-06-15", "negotiationItems": [
+                 {"productId": 7975, "negotiatedQuantity": 200.0, "unitPrice": 260.0,
+                  "selectedOption": True}]}]},
+    ],
+}
+
+
+def test_quotation_decompose():
+    rows = t.to_quotation_rows(QUOTATION)
+    assert len(rows) == 2  # 2 fornecedores x 1 insumo
+    by_sup = {r["supplier_ext"]: r for r in rows}
+    assert by_sup["1768"]["resource_code"] == "7975"
+    assert by_sup["1768"]["unit_price"] == 274.2
+    assert by_sup["1768"]["source_external_id"] == "555:1768:7975"
+    assert by_sup["1768"]["valid_until"] == "2026-06-01"  # cai p/ responseDeadline
+    assert by_sup["1900"]["valid_until"] == "2026-06-15"  # usa expirationDate
+    assert by_sup["1900"]["raw_description"] == "VERGALHAO 10MM"
+
+
 def test_budget_item():
     r = t.to_budget_item(BUDGET)
     assert r["source_external_id"] == "202:1"  # chave composta obra:id

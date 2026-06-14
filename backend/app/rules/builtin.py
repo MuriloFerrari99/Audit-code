@@ -114,7 +114,10 @@ class LostQuoteRule:
         items = session.execute(
             select(PurchaseOrderItem).where(
                 PurchaseOrderItem.unit_price.is_not(None),
-                PurchaseOrderItem.catalog_item_id.is_not(None),
+                or_(
+                    PurchaseOrderItem.catalog_item_id.is_not(None),
+                    PurchaseOrderItem.resource_code.is_not(None),
+                ),
             )
         ).scalars()
         for item in items:
@@ -122,11 +125,16 @@ class LostQuoteRule:
             if order is None:
                 continue
             unit_price = D(str(item.unit_price))
-            # cotação válida mais barata para o mesmo insumo
+            # casa por catálogo (se houver) ou pelo resource_code (productId)
+            key = (
+                Quotation.catalog_item_id == item.catalog_item_id
+                if item.catalog_item_id
+                else Quotation.resource_code == item.resource_code
+            )
             q = session.execute(
                 select(Quotation)
                 .where(
-                    Quotation.catalog_item_id == item.catalog_item_id,
+                    key,
                     Quotation.unit_price.is_not(None),
                     Quotation.unit_price < unit_price,
                 )
@@ -335,12 +343,21 @@ class NoCompetitionRule:
                     PurchaseOrderItem.catalog_item_id.is_not(None),
                 )
             ).scalars().all()
-            if not cat_ids:
-                continue
-            distinct_creditors = session.execute(
-                select(func.count(func.distinct(Quotation.creditor_id))).where(
-                    Quotation.catalog_item_id.in_(cat_ids)
+            res_codes = session.execute(
+                select(PurchaseOrderItem.resource_code).where(
+                    PurchaseOrderItem.order_id == order.id,
+                    PurchaseOrderItem.resource_code.is_not(None),
                 )
+            ).scalars().all()
+            if not cat_ids and not res_codes:
+                continue
+            match_clauses = []
+            if cat_ids:
+                match_clauses.append(Quotation.catalog_item_id.in_(cat_ids))
+            if res_codes:
+                match_clauses.append(Quotation.resource_code.in_(res_codes))
+            distinct_creditors = session.execute(
+                select(func.count(func.distinct(Quotation.creditor_id))).where(or_(*match_clauses))
             ).scalar_one()
             if distinct_creditors >= min_quotes:
                 continue
