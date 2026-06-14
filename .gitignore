@@ -41,3 +41,7 @@ pgdata/
 .idea/
 .vscode/
 *.swp
+
+# Next/TS build info
+*.tsbuildinfo
+.next/
