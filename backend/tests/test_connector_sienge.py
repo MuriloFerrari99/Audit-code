@@ -6,7 +6,7 @@ Exercita pull (fixtures) + normalize. Não precisa de Postgres nem de API real.
 from __future__ import annotations
 
 from app.connectors.base import EntityKind, PullCursor
-from app.connectors.sienge import SiengeConnector
+from app.connectors.sienge.connector import SiengeConnector
 from app.core.secrets import EnvSecretProvider
 
 

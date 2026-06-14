@@ -55,11 +55,13 @@ class Project(Base, TimestampMixin):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tenant.id"), nullable=False, index=True
     )
-    company_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("company.id"), nullable=False, index=True
+    # Nullable: obras podem ser criadas como stub a partir do buildingId do
+    # pedido antes de termos o vínculo com a empresa (Sienge não expõe o link).
+    company_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("company.id"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    external_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    external_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     state: Mapped[str | None] = mapped_column(String(2), nullable=True)  # UF p/ SINAPI regional
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
     budget_total: Mapped[float | None] = mapped_column(Numeric(18, 4), nullable=True)

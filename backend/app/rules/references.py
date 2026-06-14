@@ -76,12 +76,46 @@ def _internal_median(session: Session, catalog_item_id: str) -> PriceReference |
     )
 
 
+def _internal_median_by_resource(session: Session, resource_code: str) -> PriceReference | None:
+    """Mediana intra-tenant agrupada pelo código do insumo na fonte (resourceId
+    do Sienge) — funciona sem casamento de catálogo (ML)."""
+    median = session.execute(
+        select(func.percentile_cont(0.5).within_group(PurchaseOrderItem.unit_price)).where(
+            PurchaseOrderItem.resource_code == resource_code,
+            PurchaseOrderItem.unit_price.is_not(None),
+        )
+    ).scalar()
+    n = session.execute(
+        select(func.count()).where(
+            PurchaseOrderItem.resource_code == resource_code,
+            PurchaseOrderItem.unit_price.is_not(None),
+        )
+    ).scalar_one()
+    if median is None or n < 3:
+        return None
+    return PriceReference(
+        value=Decimal(str(median)),
+        layer="internal_median_resource",
+        snapshot={"layer": "camada_0_interno", "source": "mediana_resource_code",
+                  "resource_code": resource_code, "n": int(n), "value": str(median)},
+    )
+
+
 def resolve_price_reference(
-    session: Session, catalog_item_id: str, state: str | None
+    session: Session,
+    catalog_item_id: str | None,
+    state: str | None,
+    resource_code: str | None = None,
 ) -> PriceReference | None:
-    item = session.get(CatalogItem, catalog_item_id)
-    if item is not None and item.sinapi_code:
-        ref = _sinapi_reference(session, item.sinapi_code, state)
+    if catalog_item_id:
+        item = session.get(CatalogItem, catalog_item_id)
+        if item is not None and item.sinapi_code:
+            ref = _sinapi_reference(session, item.sinapi_code, state)
+            if ref is not None:
+                return ref
+        ref = _internal_median(session, catalog_item_id)
         if ref is not None:
             return ref
-    return _internal_median(session, catalog_item_id)
+    if resource_code:
+        return _internal_median_by_resource(session, resource_code)
+    return None

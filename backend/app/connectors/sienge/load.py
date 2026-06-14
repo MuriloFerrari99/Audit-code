@@ -1,0 +1,159 @@
+"""Carga canônica do Sienge (raw -> entidades canônicas) com resolução de FK.
+
+Roda no container (precisa de DB + HTTP). Resolve:
+- supplierId -> creditor.id
+- buildingId -> project.id (cria obra stub se não existir; company_id fica nulo)
+- forecastBillId (no pedido) -> bill.order_id (ponte pedido↔título para R5)
+
+resource_code (resourceId do Sienge) vira a chave de comparação intra-tenant
+(R1/R4) sem depender do casamento de catálogo (ML).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from decimal import Decimal
+
+from sqlalchemy import select
+
+from app.connectors.base import EntityKind, PullCursor
+from app.connectors.sienge import transform as T
+from app.connectors.sienge.connector import SiengeConnector
+from app.core.db import tenant_session
+from app.core.logging import get_logger
+from app.models.sourcing import Bill, Creditor, PurchaseOrder, PurchaseOrderItem
+from app.models.tenancy import Project
+
+log = get_logger("connector.sienge.load")
+
+
+def _hash(d: dict) -> str:
+    return hashlib.sha256(json.dumps(d, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def _dec(v):
+    return Decimal(str(v)) if v is not None else None
+
+
+def load_canonical(
+    connector: SiengeConnector, tenant_id: str, max_orders: int | None = None
+) -> dict[str, int]:
+    """Carrega o canônico. max_orders limita a 1ª carga (a base tem milhares de
+    pedidos, cada um com um sub-call de itens)."""
+    connector.authenticate()
+    summary = {"creditor": 0, "purchase_order": 0, "purchase_order_item": 0, "bill": 0}
+
+    with tenant_session(tenant_id) as s:
+        # 1) Credores
+        creditor_map: dict[str, str] = {}
+        for raw in connector.pull(EntityKind.CREDITOR, PullCursor()):
+            f = T.to_creditor(raw.payload)
+            ext = f["source_external_id"]
+            obj = s.execute(
+                select(Creditor).where(Creditor.source == "sienge", Creditor.source_external_id == ext)
+            ).scalar_one_or_none()
+            if obj is None:
+                obj = Creditor(tenant_id=tenant_id, source="sienge", source_external_id=ext,
+                               name=f["name"] or "(sem nome)", cnpj_cpf=f["cnpj_cpf"],
+                               content_hash=_hash(f))
+                s.add(obj)
+                s.flush()
+                summary["creditor"] += 1
+            creditor_map[ext] = str(obj.id)
+
+        # 2) Obras (stub por buildingId) + 3) Pedidos + itens
+        project_map: dict[str, str] = {}
+        forecast_to_order: dict[str, str] = {}
+
+        def get_project(building_ext: str | None) -> str | None:
+            if not building_ext:
+                return None
+            if building_ext in project_map:
+                return project_map[building_ext]
+            proj = s.execute(
+                select(Project).where(Project.external_code == building_ext)
+            ).scalar_one_or_none()
+            if proj is None:
+                proj = Project(tenant_id=tenant_id, name=f"Obra {building_ext}",
+                               external_code=building_ext)
+                s.add(proj)
+                s.flush()
+            project_map[building_ext] = str(proj.id)
+            return str(proj.id)
+
+        processed_orders = 0
+        for raw in connector.pull(EntityKind.PURCHASE_ORDER, PullCursor()):
+            if max_orders is not None and processed_orders >= max_orders:
+                break
+            processed_orders += 1
+            f = T.to_purchase_order(raw.payload)
+            ext = f["source_external_id"]
+            order = s.execute(
+                select(PurchaseOrder).where(PurchaseOrder.source == "sienge",
+                                            PurchaseOrder.source_external_id == ext)
+            ).scalar_one_or_none()
+            project_id = get_project(f["building_ext"])
+            creditor_id = creditor_map.get(f["supplier_ext"] or "")
+            if order is None:
+                order = PurchaseOrder(tenant_id=tenant_id, source="sienge", source_external_id=ext,
+                                      content_hash=_hash(f))
+                s.add(order)
+                summary["purchase_order"] += 1
+            order.total = _dec(f["total"])
+            order.status = f["status"]
+            order.ordered_at = _parse_dt(f["ordered_at"])
+            order.project_id = project_id
+            order.creditor_id = creditor_id
+            s.flush()
+            if f["forecast_bill_ext"]:
+                forecast_to_order[f["forecast_bill_ext"]] = str(order.id)
+
+            # itens (sub-recurso)
+            try:
+                items = connector.pull_order_items(ext)
+            except Exception as e:  # não derruba o batch (ADR-15)
+                log.warning("load.items.error", order=ext, error=str(e))
+                items = []
+            for it in items:
+                fi = T.to_order_item(it)
+                key = f"{ext}:{it.get('itemNumber') or fi['resource_code']}"
+                exists = s.execute(
+                    select(PurchaseOrderItem).where(
+                        PurchaseOrderItem.order_id == order.id,
+                        PurchaseOrderItem.resource_code == fi["resource_code"],
+                    )
+                ).scalar_one_or_none()
+                if exists is None:
+                    s.add(PurchaseOrderItem(
+                        tenant_id=tenant_id, order_id=order.id,
+                        resource_code=fi["resource_code"],
+                        raw_description=fi["raw_description"] or "(sem descrição)",
+                        qty=_dec(fi["qty"]), unit_price=_dec(fi["unit_price"]), unit=fi["unit"],
+                    ))
+                    summary["purchase_order_item"] += 1
+
+        # 4) Títulos (resolve credor + vínculo com pedido via forecastBill)
+        for raw in connector.pull(EntityKind.BILL, PullCursor()):
+            f = T.to_bill(raw.payload)
+            ext = f["source_external_id"]
+            bill = s.execute(
+                select(Bill).where(Bill.source == "sienge", Bill.source_external_id == ext)
+            ).scalar_one_or_none()
+            if bill is None:
+                bill = Bill(tenant_id=tenant_id, source="sienge", source_external_id=ext,
+                            content_hash=_hash(f))
+                s.add(bill)
+                summary["bill"] += 1
+            bill.amount = _dec(f["amount"])
+            bill.status = f["status"]
+            bill.creditor_id = creditor_map.get(f["creditor_ext"] or "")
+            bill.order_id = forecast_to_order.get(ext)
+
+    log.info("load.canonical.done", **summary)
+    return summary
+
+
+def _parse_dt(value):
+    from app.connectors.sienge.connector import _dt
+    return _dt(value)

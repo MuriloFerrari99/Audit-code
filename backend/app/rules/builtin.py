@@ -14,7 +14,7 @@ from __future__ import annotations
 from datetime import timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.money import Money
@@ -55,14 +55,22 @@ class OverpriceRule:
         items = session.execute(
             select(PurchaseOrderItem).where(
                 PurchaseOrderItem.unit_price.is_not(None),
-                PurchaseOrderItem.catalog_item_id.is_not(None),
+                or_(
+                    PurchaseOrderItem.catalog_item_id.is_not(None),
+                    PurchaseOrderItem.resource_code.is_not(None),
+                ),
             )
         ).scalars()
         for item in items:
             order = session.get(PurchaseOrder, item.order_id)
             if order is None:
                 continue
-            ref = resolve_price_reference(session, str(item.catalog_item_id), _state_of_order(session, order))
+            ref = resolve_price_reference(
+                session,
+                str(item.catalog_item_id) if item.catalog_item_id else None,
+                _state_of_order(session, order),
+                item.resource_code,
+            )
             if ref is None:
                 continue
             unit_price = D(str(item.unit_price))

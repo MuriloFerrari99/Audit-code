@@ -17,7 +17,7 @@ from __future__ import annotations
 import sys
 
 from app.connectors.base import PullCursor
-from app.connectors.sienge import SiengeConnector
+from app.connectors.sienge.connector import SiengeConnector
 from app.core.secrets import get_secret_provider
 
 DEFAULT_TENANT = "11111111-1111-1111-1111-111111111111"

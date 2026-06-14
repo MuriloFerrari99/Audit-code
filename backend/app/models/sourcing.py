@@ -53,6 +53,7 @@ class Creditor(Base, TenantScopedMixin, SourcedMixin):
 class BudgetItem(Base, TenantScopedMixin, SourcedMixin):
     __tablename__ = "budget_item"
     catalog_item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    resource_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     raw_description: Mapped[str] = mapped_column(String(500), nullable=False)
     unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
     qty_budgeted: Mapped[float | None] = mapped_column(QTY, nullable=True)
@@ -105,6 +106,9 @@ class PurchaseOrderItem(Base, TenantScopedMixin):
     __tablename__ = "purchase_order_item"
     order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     catalog_item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # Código do insumo na fonte (resourceId do Sienge): chave de comparação
+    # intra-tenant para R1/R4 sem depender do casamento de catálogo (ML).
+    resource_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     raw_description: Mapped[str] = mapped_column(String(500), nullable=False)
     qty: Mapped[float | None] = mapped_column(QTY, nullable=True)
     unit_price: Mapped[float | None] = mapped_column(MONEY, nullable=True)
