@@ -16,6 +16,7 @@ import statistics
 import sys
 import urllib.request
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -70,20 +71,25 @@ def main() -> None:
 
     by_resource = defaultdict(list)   # resourceId -> [(unitPrice, order, item)]
     order_items = {}                  # orderId -> [items]
-    for i, o in enumerate(orders):
-        oid = o["id"]
+
+    def fetch_items(o):
         try:
-            items = get(f"{V1}/purchase-orders/{oid}/items").get("results", [])
+            return o, get(f"{V1}/purchase-orders/{o['id']}/items").get("results", [])
         except Exception:
-            items = []
-        order_items[oid] = items
-        for it in items:
-            up = it.get("unitPrice")
-            rid = it.get("resourceId")
-            if up and rid:
-                by_resource[rid].append((up, o, it))
-        if (i + 1) % 25 == 0:
-            print(f"  ...{i+1}/{len(orders)} pedidos", flush=True)
+            return o, []
+
+    done = 0
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        for o, items in pool.map(fetch_items, orders):
+            order_items[o["id"]] = items
+            for it in items:
+                up = it.get("unitPrice")
+                rid = it.get("resourceId")
+                if up and rid:
+                    by_resource[rid].append((up, o, it))
+            done += 1
+            if done % 200 == 0:
+                print(f"  ...{done}/{len(orders)} pedidos", flush=True)
 
     findings = []
 
@@ -108,7 +114,7 @@ def main() -> None:
     print("Puxando orçamento (building-cost-estimation-items)...", flush=True)
     buildings = {o.get("buildingId") for o in orders if o.get("buildingId")}
     budget = []
-    for b in list(buildings)[:8]:
+    for b in list(buildings)[:40]:
         try:
             budget.extend(bulk_all("/building-cost-estimation-items", f"buildingId={b}"))
         except Exception:
@@ -135,7 +141,7 @@ def main() -> None:
         for b in page:
             bills[b["id"]] = b
         boff += 200
-        if boff > 4000:
+        if boff > 12000:
             break
     for o in orders:
         fb = o.get("forecastBillId")
@@ -149,14 +155,33 @@ def main() -> None:
     # ---- R6 sem concorrência: pedido > 50k com <2 fornecedores cotando seus insumos ----
     print("Puxando cotações...", flush=True)
     quote_suppliers = defaultdict(set)  # productId -> {supplierId}
+    quote_min_price = {}                 # productId -> menor unitPrice cotado
     quotes = bulk_all("/purchase-quotations", "startDate=2024-01-01&endDate=2026-06-13")
     for q in quotes:
         for sup in q.get("purchaseQuotationSuppliers") or []:
             sid = sup.get("supplierId")
             for neg in sup.get("negotiations") or []:
                 for ni in neg.get("negotiationItems") or []:
-                    if ni.get("productId"):
-                        quote_suppliers[ni["productId"]].add(sid)
+                    pid = ni.get("productId")
+                    up = ni.get("unitPrice")
+                    if pid:
+                        quote_suppliers[pid].add(sid)
+                        if up:
+                            quote_min_price[pid] = min(quote_min_price.get(pid, up), up)
+
+    # ---- R2 cotação perdida: item do pedido pago acima da cotação mais barata ----
+    for o in orders:
+        for it in order_items.get(o["id"], []):
+            rid = it.get("resourceId")
+            up = it.get("unitPrice")
+            best = quote_min_price.get(rid)
+            if rid and up and best and up > best:
+                qty = it.get("quantity") or 1
+                exposed = (up - best) * qty
+                if exposed >= 100:
+                    findings.append(("R2 cotação perdida", exposed,
+                                     f"pedido {o['id']} '{it.get('resourceDescription','')[:38]}' "
+                                     f"pago {BRL(up)}/un vs cotação {BRL(best)}"))
     for o in orders:
         if (o.get("totalAmount") or 0) <= 50000:
             continue
