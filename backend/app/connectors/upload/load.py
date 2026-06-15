@@ -178,7 +178,9 @@ def load_spreadsheet(tenant_id: str, filename: str, content: bytes) -> dict:
             doc = (str(row["documento"]).strip() if row.get("documento") else None)
             cnpj = (str(row["cnpj"]).strip() if row.get("cnpj") else None)
             creditor = _resolve_creditor(s, tenant_id, cnpj, row.get("fornecedor"))
-            ext = hashlib.sha1(
+            # chave determinística da linha (não-criptográfica); SHA-256 p/ não
+            # acionar B324. Trunca p/ caber no source_external_id (String 128).
+            ext = hashlib.sha256(
                 f"{filename}|{row['_row']}|{doc}|{cnpj}|{amount}".encode()
             ).hexdigest()
 
