@@ -10,6 +10,7 @@ from app.agents.squad.base import AgentResult, SquadAgent, SquadContext, new_run
 from app.agents.squad.enricher import EnricherAgent
 from app.agents.squad.executor import ExecutorAgent
 from app.agents.squad.extractor import ExtractorAgent
+from app.agents.squad.runner import SquadRunner
 
 __all__ = [
     "SquadContext",
@@ -20,4 +21,5 @@ __all__ = [
     "EnricherAgent",
     "AuditorAgent",
     "ExecutorAgent",
+    "SquadRunner",
 ]
