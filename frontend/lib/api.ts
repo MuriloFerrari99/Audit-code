@@ -134,6 +134,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ decision, reason: reason ?? null }),
     }),
+  billing: () => request<import("./types").BillingSummary>("/billing/me"),
   monthlyReport: () => request<MonthlyReport>("/reports/monthly"),
   dossier: (id: string) => request<Record<string, unknown>>(`/findings/${id}/dossier`),
   quality: () =>

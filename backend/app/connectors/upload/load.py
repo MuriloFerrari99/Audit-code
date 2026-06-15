@@ -12,6 +12,7 @@ from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import select
 
+from app.billing.service import increment_usage
 from app.connectors.upload.nfe import parse_nfe
 from app.connectors.upload.nfse import parse_nfse
 from app.connectors.upload.spreadsheet import parse_amount, parse_spreadsheet
@@ -131,6 +132,8 @@ def load_nfe_files(tenant_id: str, files: list[tuple[str, bytes]]) -> dict:
                     total=_dec(it.get("valor_total")),
                 ))
                 summary["items"] += 1
+        # medição de uso: cobra por NOTA nova (idempotente; reupload não recobra)
+        increment_usage(s, tenant_id, invoices=summary["invoices"])
     log.info("upload.nfe.done", tenant_id=tenant_id, **summary)
     return summary
 

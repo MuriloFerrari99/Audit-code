@@ -11,6 +11,7 @@ const NAV = [
   { href: "/findings", label: "Achados" },
   { href: "/quality", label: "Higiene de dados" },
   { href: "/calibration", label: "Aprendizado" },
+  { href: "/billing", label: "Cobrança" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

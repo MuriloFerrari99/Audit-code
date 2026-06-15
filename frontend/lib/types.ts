@@ -112,3 +112,16 @@ export interface PlanilhaUploadSummary {
   dead_letters: number;
   mapping: Record<string, string>;
 }
+
+export interface BillingSummary {
+  period: string;
+  plan: { code: string; name: string } | null;
+  invoices_used: number;
+  invoice_limit: number | null;
+  overage_units: number;
+  base_price: string;
+  overage_price: string;
+  overage_amount: string;
+  total: string;
+  subscription_status: string;
+}

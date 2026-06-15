@@ -45,6 +45,7 @@ jobs:
         run: |
           alembic upgrade head
           python -m scripts.bootstrap_roles
+          python -m scripts.bootstrap_plans
       - name: Test (Postgres real — inclui isolamento multi-tenant)
         run: pytest -q
 

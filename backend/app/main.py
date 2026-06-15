@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api.routes_auth import router as auth_router
+from app.api.routes_billing import router as billing_router
 from app.api.routes_findings import router as findings_router
 from app.api.routes_onboarding import router as onboarding_router
 from app.api.routes_reports import router as reports_router
@@ -51,6 +52,7 @@ app.include_router(findings_router)
 app.include_router(reports_router)
 app.include_router(onboarding_router)
 app.include_router(upload_router)
+app.include_router(billing_router)
 
 
 @app.get("/metrics")

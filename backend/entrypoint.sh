@@ -12,5 +12,8 @@ done
 echo "[entrypoint] bootstrap do role de aplicação (app_rw)..."
 python -m scripts.bootstrap_roles
 
+echo "[entrypoint] bootstrap do catálogo de planos..."
+python -m scripts.bootstrap_plans
+
 echo "[entrypoint] iniciando: $*"
 exec "$@"
