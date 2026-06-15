@@ -2,6 +2,7 @@
 tabelas e que TENANT_SCOPED seja populado antes das migrações.
 """
 
+from app.models.agentic import AgentReasoningLog, Dispute
 from app.models.auth import Membership, Role, User
 from app.models.base import TENANT_SCOPED, Base
 from app.models.billing import BillingEvent, Plan, Subscription, UsageCounter
@@ -83,4 +84,7 @@ __all__ = [
     "Subscription",
     "UsageCounter",
     "BillingEvent",
+    # agentic (OpenSquad)
+    "AgentReasoningLog",
+    "Dispute",
 ]

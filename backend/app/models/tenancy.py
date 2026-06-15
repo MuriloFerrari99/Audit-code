@@ -27,6 +27,9 @@ class Tenant(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     doc: Mapped[str | None] = mapped_column(String(20), nullable=True)  # CNPJ do grupo
     country_code: Mapped[str] = mapped_column(String(2), default="BR", nullable=False)
+    # país/setor/moeda definem dinamicamente quais adapters/refs o sistema liga.
+    currency: Mapped[str] = mapped_column(String(3), default="BRL", nullable=False)
+    industry: Mapped[str] = mapped_column(String(40), default="construction", nullable=False)
     plan: Mapped[str] = mapped_column(String(40), default="mvp", nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
 
