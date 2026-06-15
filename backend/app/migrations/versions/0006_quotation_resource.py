@@ -7,7 +7,6 @@ Create Date: 2026-06-13
 
 from __future__ import annotations
 
-import sqlalchemy as sa
 from alembic import op
 
 revision = "0006"
@@ -17,10 +16,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("quotation", sa.Column("resource_code", sa.String(64), nullable=True))
-    op.create_index("ix_quotation_resource_code", "quotation", ["resource_code"])
+    op.execute("ALTER TABLE quotation ADD COLUMN IF NOT EXISTS resource_code VARCHAR(64)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_quotation_resource_code ON quotation (resource_code)")
 
 
 def downgrade() -> None:
-    op.drop_index("ix_quotation_resource_code", "quotation")
-    op.drop_column("quotation", "resource_code")
+    op.execute("DROP INDEX IF EXISTS ix_quotation_resource_code")
+    op.execute("ALTER TABLE quotation DROP COLUMN IF EXISTS resource_code")

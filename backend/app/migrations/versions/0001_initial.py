@@ -22,9 +22,8 @@ RLS_TABLES = ["company", "project"]
 
 
 def upgrade() -> None:
-    # Extensões necessárias (pgvector entra quando o catálogo for criado).
-    op.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto";')
-
+    # gen_random_uuid() é nativo do Postgres 13+ (não precisa de pgcrypto, que pode
+    # não existir na imagem do CI). pgvector entra na 0002 (catálogo).
     op.create_table(
         "tenant",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),

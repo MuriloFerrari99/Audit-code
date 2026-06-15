@@ -138,6 +138,7 @@ def seed() -> dict:
                     full_name="Founder",
                 )
             )
+            s.flush()  # garante o user antes do membership (FK)
             s.add(Membership(user_id=uid, tenant_id=TENANT_ID, role=Role.OWNER.value))
 
     # Dados de cliente (com RLS).

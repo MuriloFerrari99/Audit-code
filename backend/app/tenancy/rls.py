@@ -16,7 +16,9 @@ POLICY_SUFFIX = "_tenant_isolation"
 
 def enable_rls_statements(table: str) -> list[str]:
     policy = f"{table}{POLICY_SUFFIX}"
-    expr = "tenant_id = current_setting('app.current_tenant', true)::uuid"
+    # NULLIF: sem tenant fixado, current_setting devolve '' -> NULL -> nenhuma linha
+    # (fail-closed), em vez de quebrar com 'invalid input syntax for uuid'.
+    expr = "tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid"
     return [
         f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;",
         f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;",

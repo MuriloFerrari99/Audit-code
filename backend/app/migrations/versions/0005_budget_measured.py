@@ -7,7 +7,6 @@ Create Date: 2026-06-13
 
 from __future__ import annotations
 
-import sqlalchemy as sa
 from alembic import op
 
 revision = "0005"
@@ -17,8 +16,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("budget_item", sa.Column("qty_measured", sa.Numeric(18, 4), nullable=True))
+    op.execute("ALTER TABLE budget_item ADD COLUMN IF NOT EXISTS qty_measured NUMERIC(18,4)")
 
 
 def downgrade() -> None:
-    op.drop_column("budget_item", "qty_measured")
+    op.execute("ALTER TABLE budget_item DROP COLUMN IF EXISTS qty_measured")

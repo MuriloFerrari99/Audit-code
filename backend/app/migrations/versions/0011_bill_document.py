@@ -7,7 +7,6 @@ Create Date: 2026-06-14
 
 from __future__ import annotations
 
-import sqlalchemy as sa
 from alembic import op
 
 revision = "0011"
@@ -17,10 +16,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("bill", sa.Column("document_number", sa.String(60), nullable=True))
-    op.add_column("bill", sa.Column("document_identification", sa.String(20), nullable=True))
+    op.execute("ALTER TABLE bill ADD COLUMN IF NOT EXISTS document_number VARCHAR(60)")
+    op.execute("ALTER TABLE bill ADD COLUMN IF NOT EXISTS document_identification VARCHAR(20)")
 
 
 def downgrade() -> None:
-    op.drop_column("bill", "document_identification")
-    op.drop_column("bill", "document_number")
+    op.execute("ALTER TABLE bill DROP COLUMN IF EXISTS document_identification")
+    op.execute("ALTER TABLE bill DROP COLUMN IF EXISTS document_number")

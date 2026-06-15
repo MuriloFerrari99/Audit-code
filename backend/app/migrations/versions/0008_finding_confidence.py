@@ -7,7 +7,6 @@ Create Date: 2026-06-14
 
 from __future__ import annotations
 
-import sqlalchemy as sa
 from alembic import op
 
 revision = "0008"
@@ -17,8 +16,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("finding", sa.Column("confidence", sa.Numeric(4, 3), nullable=True))
+    op.execute("ALTER TABLE finding ADD COLUMN IF NOT EXISTS confidence NUMERIC(4,3)")
 
 
 def downgrade() -> None:
-    op.drop_column("finding", "confidence")
+    op.execute("ALTER TABLE finding DROP COLUMN IF EXISTS confidence")
