@@ -9,12 +9,14 @@ chamado na carga de notas (connectors/upload/load.py).
 
 from __future__ import annotations
 
+import uuid
 from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from app.core.db import admin_session
 from app.core.timeutils import now_utc, period_key
 from app.models.billing import BillingEvent, Plan, Subscription, UsageCounter
 from app.models.findings import Finding, ValueLedger
@@ -172,3 +174,30 @@ def issue_statement(session: Session, tenant_id: str, period: str | None = None)
     _upsert_billing_event(session, tenant_id, p, "gainshare",
                           D(gs) if gs is not None else D(0), st["gainshare"])
     return st
+
+
+# ----------------------------------------------------------------- provedor (webhook)
+def apply_provider_event(event) -> dict:
+    """Aplica um evento de webhook (já verificado) ao schema. Operação de
+    PLATAFORMA (admin_session): vincula/atualiza a assinatura por provider_ref.
+    Idempotente — reaplicar o mesmo evento converge ao mesmo estado."""
+    with admin_session() as s:
+        sub = None
+        if event.type == "checkout.session.completed" and event.tenant_id:
+            sub = s.execute(
+                select(Subscription)
+                .where(Subscription.tenant_id == uuid.UUID(str(event.tenant_id)))
+                .order_by(Subscription.created_at.desc())
+                .limit(1)
+            ).scalar_one_or_none()
+            if sub is not None:
+                sub.provider = "stripe"
+                sub.provider_ref = event.subscription_ref
+                sub.status = "active"
+        elif event.subscription_ref:
+            sub = s.execute(
+                select(Subscription).where(Subscription.provider_ref == event.subscription_ref)
+            ).scalar_one_or_none()
+            if sub is not None and event.status:
+                sub.status = event.status
+        return {"handled": sub is not None, "type": event.type}

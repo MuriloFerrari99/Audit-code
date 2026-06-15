@@ -64,8 +64,14 @@ B2B brasileiro precisa de **PIX/boleto** (cartão sozinho não fecha). Opções:
    R3/R6, integridade e flags fiscais ficam fora). `GET /billing/statement`,
    `POST /billing/statement/close` (materializa `billing_event`, idempotente) e
    seção no painel do cliente.
-3. **Provedor de pagamento** (adapter + 1 integração): assinatura recorrente da
-   mensalidade + emissão da fatura de gainshare + **webhook** de baixa.
+3. ✅ **Provedor de pagamento** (adapter agnóstico + **Stripe**): `BillingProvider`
+   isola o SDK; `POST /billing/checkout` cria a sessão recorrente; `POST
+   /billing/webhook/stripe` verifica **assinatura** e atualiza o estado
+   (active/past_due/canceled); botão "Ativar assinatura" no painel.
+   *Configuração necessária (suas chaves):* `BILLING_PROVIDER=stripe`,
+   `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, e em cada `plan.features.stripe_price_id`
+   o Price criado no painel da Stripe. Sem chaves, a cobrança fica desligada
+   (provider=none) e o resto do sistema funciona normalmente.
 4. **Painel admin** completo (tenants, uso, gainshare, override de plano) +
    **upgrade por consumo** (sugestão/auto quando estoura o limite).
 

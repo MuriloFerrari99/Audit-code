@@ -19,5 +19,7 @@ def test_app_imports_and_exposes_routes():
         "/upload/planilha",
         "/billing/me",
         "/billing/statement",
+        "/billing/checkout",
+        "/billing/webhook/stripe",
     ):
         assert expected in paths, f"rota ausente: {expected}"

@@ -136,6 +136,11 @@ export const api = {
     }),
   billing: () => request<import("./types").BillingSummary>("/billing/me"),
   statement: () => request<import("./types").Statement>("/billing/statement"),
+  checkout: (planCode: string) =>
+    request<{ url: string; ref: string }>(
+      `/billing/checkout?plan_code=${encodeURIComponent(planCode)}`,
+      { method: "POST" },
+    ),
   monthlyReport: () => request<MonthlyReport>("/reports/monthly"),
   dossier: (id: string) => request<Record<string, unknown>>(`/findings/${id}/dossier`),
   quality: () =>

@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     embeddings_provider: str | None = None
     embeddings_model: str | None = None
 
+    # Cobrança (Fase 2). billing_provider: none|stripe. Chaves via SecretProvider/env.
+    billing_provider: str = "none"
+    stripe_api_key: str | None = None
+    stripe_webhook_secret: str | None = None
+
     @property
     def is_local(self) -> bool:
         return self.app_env == "local"

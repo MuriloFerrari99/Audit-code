@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { AppShell } from "@/components/shell";
-import { Card, Money, Spinner, Stat } from "@/components/ui";
+import { Button, Card, Money, Spinner, Stat } from "@/components/ui";
+import { ApiError } from "@/lib/api";
 import type { BillingSummary, GainshareSummary } from "@/lib/types";
 
 export default function BillingPage() {
@@ -12,6 +13,17 @@ export default function BillingPage() {
   const [data, setData] = useState<BillingSummary | null>(null);
   const [gs, setGs] = useState<GainshareSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function activate(planCode: string) {
+    setMsg(null);
+    try {
+      const { url } = await api.checkout(planCode);
+      window.location.href = url;
+    } catch (e) {
+      setMsg(e instanceof ApiError ? e.message : "não foi possível iniciar a assinatura");
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,7 +65,24 @@ export default function BillingPage() {
         </Card>
       ) : (
         <>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {msg && (
+            <div className="mt-4 rounded-lg border border-sev-high/40 bg-sev-high/10 px-4 py-2 text-sm text-sev-high">
+              {msg}
+            </div>
+          )}
+
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-sm text-ink-soft">
+              Assinatura: <b>{data.subscription_status}</b>
+            </span>
+            {data.subscription_status !== "active" && (
+              <Button variant="secondary" onClick={() => activate(data.plan!.code)}>
+                Ativar assinatura
+              </Button>
+            )}
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <Stat label="Plano" value={data.plan.name} hint={`período ${data.period}`} />
             <Stat
               label="Notas no período"
