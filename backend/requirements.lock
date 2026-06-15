@@ -58,6 +58,8 @@ docstring-parser==0.18.0
     # via anthropic
 email-validator==2.3.0
     # via pydantic
+et-xmlfile==2.0.0
+    # via openpyxl
 fastapi==0.137.0
     # via audit-backend (pyproject.toml)
 freezegun==1.5.5
@@ -100,6 +102,8 @@ mypy-extensions==1.1.0
     #   mypy
 numpy==2.4.6
     # via pgvector
+openpyxl==3.1.5
+    # via audit-backend (pyproject.toml)
 packaging==26.2
     # via
     #   black

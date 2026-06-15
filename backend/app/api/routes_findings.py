@@ -12,7 +12,7 @@ from app.api.schemas import EvidenceOut, FindingOut, ReviewIn
 from app.core.errors import DomainError
 from app.core.metrics import findings_emitted_total, rule_runs_total
 from app.findings.service import get_evidence, list_findings, review_finding
-from app.models.findings import Role
+from app.models.auth import Role
 from app.quality.checks import run_quality
 from app.rules.engine import run_all
 

@@ -38,15 +38,16 @@ planilha de lançamentos, sobe, e recebe a auditoria. Sienge vira "um dos conect
 2. ✅ Entidade de **item de nota** (`invoice_item`) + carga upload → canônico (tenant-scoped, dead-letter).
 3. ✅ **Endpoint de upload** `POST /upload/nfe` (multipart: 1+ XMLs) → canônico.
 4. ✅ **Regras de retenção** `RET1` (INSS) e `RET2` (ISS) — advisory, confiança média, calibráveis.
-5. **Parser de planilha** (CSV/XLSX) com mapeamento de colunas. — *próximo*
-6. **NFS-e** (ABRASF + adaptadores municipais).
+5. ✅ **Parser de planilha** (CSV/XLSX) com auto-detecção de colunas → `Bill` (contas a pagar).
+6. **NFS-e** (ABRASF + adaptadores municipais). — *próximo*
 7. **UI**: tela de upload (arrastar XML/zip + planilha) → auditoria.
 
 ## Estado atual (migração 0014)
 - `invoice`: + `inss_retention`, `iss_retention`, `is_service`.
 - `invoice_item`: nova tabela (tenant-scoped, RLS) com `resource_code/ncm/cfop/qty/unit_price/total`.
 - Fluxo: `POST /upload/nfe` → `load_nfe_files` (parse → Invoice+itens, reupload idempotente por `nfe_key`) → `POST /rules/run` audita.
-- Validado em Postgres real: 29 testes verdes (inclui upload, dead-letter, RET1/RET2, idempotência).
+- Planilha: `POST /upload/planilha` (CSV/XLSX) → `load_spreadsheet` (auto-detecção de colunas, valores BR `1.234,56`, datas `dd/mm/aaaa`) → `Bill`; linha igual repetida dispara P1 (duplicado); reupload idempotente; linha sem valor → dead-letter.
+- Validado em Postgres real: 37 testes verdes (upload NF-e/planilha, dead-letter, RET1/RET2, P1, idempotência, smoke do app).
 
 ## Invariantes
 Mesmos de sempre: tenant-scoped (RLS), evidência + confiança, advisory, nunca

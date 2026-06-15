@@ -25,6 +25,7 @@ dependencies = [
     "prometheus-client>=0.20",
     "cryptography>=42.0",
     "defusedxml>=0.7",
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
