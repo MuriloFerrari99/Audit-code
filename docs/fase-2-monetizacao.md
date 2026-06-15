@@ -59,8 +59,11 @@ B2B brasileiro precisa de **PIX/boleto** (cartão sozinho não fecha). Opções:
    `GET /billing/me` + painel do cliente `/billing`. Plano **corporativo**
    (invoice_limit=3000, overage_price=1,90) seedado por `scripts.bootstrap_plans`.
    Fatura = base + max(0, notas − limite) × overage, calculada do uso real.
-2. **Extrato de gainshare**: cálculo do `value_ledger` → `billing_event` +
-   `GET /billing/statement` + tela no painel do cliente.
+2. ✅ **Extrato de gainshare**: base = Σ `value_ledger.validated_amount` de
+   achados aceitos de regras elegíveis (`R1,R2,R4,R5,F1,F3,P1,P2`; governança
+   R3/R6, integridade e flags fiscais ficam fora). `GET /billing/statement`,
+   `POST /billing/statement/close` (materializa `billing_event`, idempotente) e
+   seção no painel do cliente.
 3. **Provedor de pagamento** (adapter + 1 integração): assinatura recorrente da
    mensalidade + emissão da fatura de gainshare + **webhook** de baixa.
 4. **Painel admin** completo (tenants, uso, gainshare, override de plano) +

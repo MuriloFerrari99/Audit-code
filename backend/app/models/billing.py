@@ -82,5 +82,24 @@ class UsageCounter(Base, TimestampMixin):
     )
 
 
-# subscription e usage_counter são por-tenant -> RLS. plan é global (sem RLS).
-TENANT_SCOPED.update({"subscription", "usage_counter"})
+class BillingEvent(Base, TimestampMixin):
+    """Linha de fatura materializada (tenant-scoped). Trilha de auditoria da
+    cobrança: mensalidade (base+excedente) e gainshare por período."""
+
+    __tablename__ = "billing_event"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "period", "kind", name="uq_billing_tenant_period_kind"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    period: Mapped[str] = mapped_column(String(7), nullable=False)  # 'AAAA-MM'
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # base | gainshare
+    amount: Mapped[float] = mapped_column(MONEY, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="issued")
+    detail: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    provider_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+
+# subscription, usage_counter e billing_event são por-tenant -> RLS. plan é global.
+TENANT_SCOPED.update({"subscription", "usage_counter", "billing_event"})

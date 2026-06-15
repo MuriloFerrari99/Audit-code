@@ -125,3 +125,18 @@ export interface BillingSummary {
   total: string;
   subscription_status: string;
 }
+
+export interface GainshareSummary {
+  period: string;
+  base: string;
+  by_rule: Record<string, string>;
+  gainshare_pct: string | null;
+  gainshare_amount: string | null;
+  eligible_rules: string[];
+}
+
+export interface Statement {
+  period: string;
+  monthly: Omit<BillingSummary, "subscription_status">;
+  gainshare: GainshareSummary;
+}

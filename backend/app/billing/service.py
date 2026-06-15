@@ -11,14 +11,21 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.core.timeutils import now_utc, period_key
-from app.models.billing import Plan, Subscription, UsageCounter
+from app.models.billing import BillingEvent, Plan, Subscription, UsageCounter
+from app.models.findings import Finding, ValueLedger
 
 D = Decimal
+
+# Regras elegíveis a gainshare (gtm.md): só hard savings + cost avoidance, com
+# baseline e evidência. Governança (R3 fracionamento, R6 sem concorrência),
+# integridade (I*) e flags fiscais/retenção (F2/RET*) NÃO entram na fatura —
+# são valor demonstrado, não faturado. Whitelist explícita (mais seguro).
+GAINSHARE_ELIGIBLE_RULES = frozenset({"R1", "R2", "R4", "R5", "F1", "F3", "P1", "P2"})
 
 
 def current_period() -> str:
@@ -98,3 +105,70 @@ def billing_summary(session: Session) -> dict:
     invoice = compute_monthly_invoice(session)
     invoice["subscription_status"] = sub.status if sub else "none"
     return invoice
+
+
+# ----------------------------------------------------------------- gainshare
+def compute_gainshare(session: Session, period: str | None = None) -> dict:
+    """Base de gainshare do período = Σ validated_amount de achados ACEITOS cujas
+    regras sejam elegíveis (hard savings + cost avoidance). gtm.md."""
+    p = period or current_period()
+    rows = session.execute(
+        select(Finding.rule_id, func.coalesce(func.sum(ValueLedger.validated_amount), 0))
+        .join(Finding, Finding.id == ValueLedger.finding_id)
+        .where(
+            ValueLedger.period == p,
+            ValueLedger.status == "validated",
+            Finding.rule_id.in_(GAINSHARE_ELIGIBLE_RULES),
+        )
+        .group_by(Finding.rule_id)
+    ).all()
+    by_rule = {rid: str(D(str(amt))) for rid, amt in rows}
+    base = sum((D(str(amt)) for _, amt in rows), D(0))
+
+    sub = _active_subscription(session)
+    plan = session.get(Plan, sub.plan_id) if sub else None
+    pct = D(str(plan.gainshare_pct)) if plan and plan.gainshare_pct is not None else None
+    amount = (base * pct) if pct is not None else None
+    return {
+        "period": p,
+        "base": str(base),
+        "by_rule": by_rule,
+        "gainshare_pct": str(pct) if pct is not None else None,
+        "gainshare_amount": str(amount) if amount is not None else None,
+        "eligible_rules": sorted(GAINSHARE_ELIGIBLE_RULES),
+    }
+
+
+def get_statement(session: Session, period: str | None = None) -> dict:
+    """Extrato do período: mensalidade (base+excedente) + gainshare."""
+    p = period or current_period()
+    return {
+        "period": p,
+        "monthly": compute_monthly_invoice(session, p),
+        "gainshare": compute_gainshare(session, p),
+    }
+
+
+def _upsert_billing_event(session: Session, tenant_id: str, period: str, kind: str,
+                          amount: Decimal, detail: dict) -> None:
+    stmt = pg_insert(BillingEvent).values(
+        tenant_id=tenant_id, period=period, kind=kind, amount=amount,
+        status="issued", detail=detail,
+    ).on_conflict_do_update(
+        constraint="uq_billing_tenant_period_kind",
+        set_={"amount": amount, "detail": detail, "status": "issued"},
+    )
+    session.execute(stmt)
+
+
+def issue_statement(session: Session, tenant_id: str, period: str | None = None) -> dict:
+    """Materializa o extrato do período como billing_event (idempotente por
+    (tenant, período, kind)). Trilha de auditoria da cobrança."""
+    st = get_statement(session, period)
+    p = st["period"]
+    _upsert_billing_event(session, tenant_id, p, "base",
+                          D(st["monthly"]["total"]), st["monthly"])
+    gs = st["gainshare"]["gainshare_amount"]
+    _upsert_billing_event(session, tenant_id, p, "gainshare",
+                          D(gs) if gs is not None else D(0), st["gainshare"])
+    return st

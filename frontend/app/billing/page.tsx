@@ -5,17 +5,20 @@ import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { AppShell } from "@/components/shell";
 import { Card, Money, Spinner, Stat } from "@/components/ui";
-import type { BillingSummary } from "@/lib/types";
+import type { BillingSummary, GainshareSummary } from "@/lib/types";
 
 export default function BillingPage() {
   const ready = useRequireAuth();
   const [data, setData] = useState<BillingSummary | null>(null);
+  const [gs, setGs] = useState<GainshareSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setData(await api.billing());
+      const [me, st] = await Promise.all([api.billing(), api.statement()]);
+      setData(me);
+      setGs(st.gainshare);
     } finally {
       setLoading(false);
     }
@@ -95,6 +98,40 @@ export default function BillingPage() {
               </tbody>
             </table>
           </Card>
+
+          {/* gainshare — economia validada elegível (hard savings + cost avoidance) */}
+          {gs && (
+            <Card className="mt-6 p-5">
+              <div className="flex items-center justify-between">
+                <h2 className="font-medium">Gainshare — economia validada</h2>
+                <span className="text-xs text-ink-faint">
+                  regras elegíveis: {gs.eligible_rules.join(", ")}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-ink-soft">
+                Soma dos achados aceitos elegíveis (governança fica fora da fatura).
+              </p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <Stat label="Base de gainshare (aceito)" value={<Money value={gs.base} />} />
+                <Stat
+                  label="Gainshare a faturar"
+                  value={
+                    gs.gainshare_amount != null ? <Money value={gs.gainshare_amount} /> : "% a definir"
+                  }
+                  hint={gs.gainshare_pct != null ? `${(Number(gs.gainshare_pct) * 100).toFixed(1)}% da base` : "defina o % do plano"}
+                />
+              </div>
+              {Object.keys(gs.by_rule).length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {Object.entries(gs.by_rule).map(([rule, amt]) => (
+                    <span key={rule} className="rounded-full bg-surface-alt px-3 py-1 text-xs text-ink-soft">
+                      {rule}: <Money value={amt} />
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
         </>
       )}
     </AppShell>

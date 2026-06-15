@@ -18,5 +18,6 @@ def test_app_imports_and_exposes_routes():
         "/upload/nfe",
         "/upload/planilha",
         "/billing/me",
+        "/billing/statement",
     ):
         assert expected in paths, f"rota ausente: {expected}"
