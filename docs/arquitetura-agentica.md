@@ -78,8 +78,12 @@ no Git. `Tenant.country/industry/currency` guiam a seleção de adapters.
   (opt-in, default OFF), idempotência por achado, adapter **log-only seguro por
   padrão** (`erp_provider`/`notifier_provider`); `SiengeErpAdapter`/`SmtpNotifier`
   são skeletons gated. `POST /disputes` (restrito) + `GET /disputes`.
-- **P5 — Citações legais:** alimentar `legal_citations` nas regras fiscais (IN RFB
-  971/2009 p/ INSS, LC 116/2003 p/ ISS) — explicabilidade na tela do achado.
-- **P6 — Multi-país:** adapter `us_pdf_invoice` + `RSMeansProvider` provando que o
-  Core não muda (só acopla adapters).
-- **API/UI:** expor `GET /agents/reasoning/{run_id}`; telas de prontuário e disputas.
+- ✅ **P5 — Citações legais:** `app/rules/citations.py` (IN RFB 971/2009 p/ INSS,
+  LC 116/2003 p/ ISS); engine grava `finding.legal_citations` (migração 0019) e a
+  API expõe no achado.
+- ✅ **P6 — Multi-país:** `get_reference_provider(country, industry)` seleciona
+  `BrazilSinapiProvider` (BR) ou `RSMeansProvider` (US, skeleton); o Runner usa o
+  factory — acoplar país é só um adapter, Core/Enricher/Runner não mudam.
+- **Próximo (P7+):** ingerir base US (RSMeans) + adapter `us_pdf_invoice`; expor
+  `GET /agents/reasoning/{run_id}`; telas de prontuário e disputas; ligar o
+  SquadRunner num worker event-driven a partir da fila de uploads.

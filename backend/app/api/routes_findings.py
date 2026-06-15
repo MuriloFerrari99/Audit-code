@@ -30,6 +30,7 @@ def _to_out(finding, evidence=None) -> FindingOut:
         title=finding.title,
         project_id=str(finding.project_id) if finding.project_id else None,
         created_at=finding.created_at,
+        legal_citations=finding.legal_citations,
         evidence=[
             EvidenceOut(entity_type=e.entity_type, role=e.role, snippet=e.snippet, value=e.value)
             for e in (evidence or [])

@@ -11,7 +11,7 @@ from __future__ import annotations
 import contextlib
 import uuid
 
-from app.adapters.references import BrazilSinapiProvider
+from app.adapters.references import get_reference_provider
 from app.agents.squad.auditor import AuditorAgent
 from app.agents.squad.base import AgentResult, SquadContext
 from app.agents.squad.enricher import EnricherAgent
@@ -68,10 +68,11 @@ class SquadRunner:
             ctx = _context(s, tenant_id)
             try:
                 doc = ExtractorAgent().extract(s, ctx, filename, content)
+                # provider escolhido por país/setor do tenant (hexágono): trocar
+                # BR<->US não toca este orquestrador.
                 provider = (
-                    BrazilSinapiProvider(s)
-                    if self.enable_enricher and ctx.country == "BR" and ctx.industry == "construction"
-                    else None
+                    get_reference_provider(s, ctx.country, ctx.industry)
+                    if self.enable_enricher else None
                 )
                 EnricherAgent(provider).enrich(s, ctx, doc)
                 found = AuditorAgent().audit(s, ctx)

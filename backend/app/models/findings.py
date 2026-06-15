@@ -54,6 +54,7 @@ class Finding(Base, TenantScopedMixin):
     # Explicabilidade/reprodutibilidade (ADR-07):
     reference_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     config_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    legal_citations: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # base legal (P5)
     title: Mapped[str | None] = mapped_column(String(300), nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

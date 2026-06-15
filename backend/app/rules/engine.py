@@ -18,6 +18,7 @@ from app.core.logging import get_logger
 from app.core.timeutils import now_utc
 from app.models.findings import Finding, FindingEvidence, FindingStatus, RuleConfig
 from app.rules.base import FindingDraft, Rule, RuleContext, registry
+from app.rules.citations import citations_for
 from app.rules.confidence import score as confidence_score
 
 log = get_logger("rules")
@@ -71,6 +72,7 @@ def upsert_finding(
     base = confidence_score(draft.rule_id, draft.reference_snapshot)
     factor = (factors or {}).get(draft.rule_id, 1.0)  # calibração por tenant (Módulo C)
     conf = round(max(0.0, min(1.0, base * factor)), 3)
+    citations = citations_for(draft.rule_id)  # base legal (P5)
 
     if existing is None:
         finding = Finding(
@@ -85,6 +87,7 @@ def upsert_finding(
             confidence=conf,
             reference_snapshot=draft.reference_snapshot,
             config_snapshot=draft.config_snapshot,
+            legal_citations=citations,
             title=draft.title,
         )
         session.add(finding)
@@ -99,6 +102,7 @@ def upsert_finding(
     existing.title = draft.title
     existing.reference_snapshot = draft.reference_snapshot
     existing.config_snapshot = draft.config_snapshot
+    existing.legal_citations = citations
     if existing.status not in HUMAN_DECIDED:
         existing.status = FindingStatus.OPEN.value
         existing.resolved_at = None

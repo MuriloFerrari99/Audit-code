@@ -52,6 +52,7 @@ class FindingOut(BaseModel):
     title: str | None = None
     project_id: str | None = None
     created_at: datetime
+    legal_citations: list[str] | None = None
     evidence: list[EvidenceOut] = Field(default_factory=list)
 
 
