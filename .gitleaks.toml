@@ -1,0 +1,29 @@
+# Config do gitleaks (CI). Estende as regras padrão e allowlista APENAS arquivos
+# que contêm valores-dummy/exemplo (nenhum segredo real é versionado — segredos
+# vivem só no .env, que é gitignored). Tudo o mais continua sendo varrido.
+
+title = "audit-code gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Caminhos com valores de exemplo/dummy e arquivos de lock"
+paths = [
+  '''\.env\.example$''',
+  '''docker-compose\.yml$''',
+  '''\.github/workflows/ci\.yml$''',
+  '''(^|/)package-lock\.json$''',
+  '''(^|/)requirements\.lock$''',
+  '''(^|/)docs/''',
+  '''(^|/)design-system/''',
+  '''(^|/)tests/''',
+  '''(^|/)fixtures/''',
+]
+# valores-dummy conhecidos (dev/CI), nunca credenciais reais
+regexes = [
+  '''minio12345''',
+  '''ci-secret''',
+  '''app_rw''',
+  ''':-audit''',
+]
