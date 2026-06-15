@@ -64,6 +64,22 @@ def sync_active_tenants() -> None:
             log.error("worker.tenant.error", tenant_id=tid, error=str(e))
 
 
+def drain_squad_events(interval_each: int = 50) -> None:
+    """Event-driven: drena o outbox de auditoria (uploads) por tenant ativo."""
+    from app.agents.squad.events import drain_audit_outbox
+
+    with admin_session() as s:
+        ids = [str(r[0]) for r in s.execute(text("SELECT id FROM tenant WHERE status = 'active'"))]
+    for tid in ids:
+        try:
+            with tenant_session(tid) as s:
+                res = drain_audit_outbox(s, tid, limit=interval_each)
+            if res["processed"]:
+                log.info("worker.squad.drained", tenant_id=tid, **{k: res[k] for k in ("processed",)})
+        except Exception as e:
+            log.error("worker.squad.error", tenant_id=tid, error=str(e))
+
+
 def main() -> None:
     configure_logging()
     log.info("worker.start", interval_min=INTERVAL_MIN)
@@ -71,6 +87,8 @@ def main() -> None:
     scheduler.add_job(
         sync_active_tenants, "interval", minutes=INTERVAL_MIN, next_run_time=None
     )  # primeira execução no próximo tick
+    # auditoria event-driven dos uploads: tick curto p/ baixa latência
+    scheduler.add_job(drain_squad_events, "interval", seconds=30, next_run_time=None)
     scheduler.start()
 
 

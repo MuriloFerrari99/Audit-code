@@ -83,8 +83,12 @@ def _parse_fiscal_xml(content: bytes) -> dict:
         return parse_nfse(content)  # pode levantar ValueError -> dead-letter
 
 
-def load_nfe_files(tenant_id: str, files: list[tuple[str, bytes]]) -> dict:
-    """files = [(filename, xml_bytes)]. NF-e ou NFS-e. Retorna resumo + dead_letters."""
+def load_nfe_files(tenant_id: str, files: list[tuple[str, bytes]],
+                   emit_event: bool = True) -> dict:
+    """files = [(filename, xml_bytes)]. NF-e ou NFS-e. Retorna resumo + dead_letters.
+
+    emit_event=True publica um pedido de auditoria no outbox (worker drena depois).
+    O SquadRunner passa False (ele mesmo já roda o Auditor)."""
     summary = {"invoices": 0, "items": 0, "dead_letters": 0}
     with tenant_session(tenant_id) as s:
         for fname, content in files:
@@ -134,6 +138,10 @@ def load_nfe_files(tenant_id: str, files: list[tuple[str, bytes]]) -> dict:
                 summary["items"] += 1
         # medição de uso: cobra por NOTA nova (idempotente; reupload não recobra)
         increment_usage(s, tenant_id, invoices=summary["invoices"])
+        # event-driven: enfileira auditoria se entrou documento novo
+        if emit_event and summary["invoices"] > 0:
+            from app.agents.squad.events import publish_audit_request
+            publish_audit_request(s, tenant_id)
     log.info("upload.nfe.done", tenant_id=tenant_id, **summary)
     return summary
 

@@ -8,6 +8,7 @@ agnóstico a país/setor/ERP.
 from app.agents.squad.auditor import AuditorAgent
 from app.agents.squad.base import AgentResult, SquadAgent, SquadContext, new_run_id
 from app.agents.squad.enricher import EnricherAgent
+from app.agents.squad.events import drain_audit_outbox, publish_audit_request
 from app.agents.squad.executor import ExecutorAgent
 from app.agents.squad.extractor import ExtractorAgent
 from app.agents.squad.runner import SquadRunner
@@ -22,4 +23,6 @@ __all__ = [
     "AuditorAgent",
     "ExecutorAgent",
     "SquadRunner",
+    "publish_audit_request",
+    "drain_audit_outbox",
 ]

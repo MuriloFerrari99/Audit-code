@@ -57,7 +57,8 @@ class SquadRunner:
     def run_document(self, tenant_id: str, filename: str, content: bytes) -> dict:
         _register_rules()
         # 1) persiste no canônico (parse + Invoice/itens + metering + dead-letter)
-        load = load_nfe_files(tenant_id, [(filename, content)])
+        #    emit_event=False: o runner já roda o Auditor abaixo (evita duplo audit)
+        load = load_nfe_files(tenant_id, [(filename, content)], emit_event=False)
         if load.get("invoices", 0) == 0 and load.get("dead_letters", 0) > 0:
             # documento inválido já foi para dead_letter na carga; não roda o squad
             log.info("squad.run.skipped_invalid", tenant_id=tenant_id, ref=filename)
