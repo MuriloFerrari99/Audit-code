@@ -1,9 +1,27 @@
 # Compose de PRODUÇÃO. Diferenças vs. o dev (docker-compose.yml):
 #  - sem --reload e sem volume do código-fonte (imagem imutável);
-#  - restart: unless-stopped; healthchecks; sem MinIO (use S3 gerenciado).
+#  - restart: unless-stopped; healthchecks; sem MinIO (use S3 gerenciado);
+#  - Caddy faz reverse proxy + HTTPS automático; api/frontend NÃO expõem porta no host.
 # Uso: docker compose -f docker-compose.prod.yml up -d --build
-# Pôr um reverse proxy com TLS (Caddy/Traefik) na frente de api(8000)/frontend(3000).
+# Requer DNS: APP_DOMAIN e API_DOMAIN apontando p/ o IP do servidor.
 services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?defina APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?defina API_DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - frontend
+
   postgres:
     image: pgvector/pgvector:pg16
     environment:
@@ -40,8 +58,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
       interval: 15s
@@ -68,8 +86,10 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
 
 volumes:
   pgdata:
+  caddy-data:
+  caddy-config:

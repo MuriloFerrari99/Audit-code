@@ -15,13 +15,16 @@
 
 ## Configuração de produção (no servidor)
 
+> Passo a passo completo p/ VPS em [deploy-vps.md](./deploy-vps.md). Resumo:
+
 1. **Compose de produção:** `docker compose -f docker-compose.prod.yml up -d --build`
-   (sem `--reload`/mount; `restart: unless-stopped`; healthchecks). O `api` roda
-   `entrypoint.sh` → `alembic upgrade` + `bootstrap_roles` + `bootstrap_plans`.
+   (sem `--reload`/mount; `restart: unless-stopped`; healthchecks; **Caddy com TLS
+   automático** já incluso). O `api` roda `entrypoint.sh` → `alembic upgrade` +
+   `bootstrap_roles` + `bootstrap_plans`.
 2. **`.env` via secret manager** (não versionar). Conferir contra [.env.example](../.env.example):
    `DATABASE_URL` (dono) ≠ `APP_DATABASE_URL` (app_rw); `APP_SECRET_KEY`, `APP_DB_PASSWORD`.
-3. **Reverse proxy com TLS** (Caddy/Traefik) na frente de api(8000)/frontend(3000);
-   setar `APP_PUBLIC_URL`, `NEXT_PUBLIC_API_URL`, `CORS_ORIGINS` para o domínio real.
+3. **DNS** `APP_DOMAIN`/`API_DOMAIN` → IP do servidor; setar `APP_PUBLIC_URL`,
+   `NEXT_PUBLIC_API_URL`, `CORS_ORIGINS`. Caddy emite o certificado sozinho.
 4. **Promover admin de plataforma:** `docker compose exec api python -m scripts.make_admin <email>`.
 5. **Backups** do Postgres (`pg_dump` do volume `pgdata`) + **restore drill**.
 6. **Object storage gerenciado** (S3) no lugar do MinIO: variáveis `S3_*`.

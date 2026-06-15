@@ -1,0 +1,12 @@
+# Reverse proxy com HTTPS automático (Let's Encrypt). Domínios via env no compose.
+# app  -> frontend (Next) ; api -> FastAPI. Caddy cuida do certificado e renovação.
+
+{$APP_DOMAIN} {
+	encode gzip
+	reverse_proxy frontend:3000
+}
+
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy api:8000
+}
