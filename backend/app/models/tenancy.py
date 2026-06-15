@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import ForeignKey, Numeric, String
+from sqlalchemy import Boolean, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +32,9 @@ class Tenant(Base, TimestampMixin):
     industry: Mapped[str] = mapped_column(String(40), default="construction", nullable=False)
     plan: Mapped[str] = mapped_column(String(40), default="mvp", nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+    # mitigação automática (Agente Executor agir no ERP/e-mail). OFF por padrão:
+    # ação externa é irreversível e exige opt-in explícito do cliente.
+    auto_mitigation: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class Company(Base, TimestampMixin):

@@ -70,14 +70,16 @@ Ação externa do Executor é **deliberada, idempotente e auditada**. Nenhum seg
 no Git. `Tenant.country/industry/currency` guiam a seleção de adapters.
 
 ## Próximos passos (roadmap da Fase Agêntica)
-- **P2 — Enriquecedor real:** implementar um `ReferencePriceProvider` BR/SINAPI
-  envolvendo `app/rules/references.py` e injetá-lo no Enricher.
-- **P3 — Orquestrador:** um `SquadRunner` event-driven (RQ/worker) que encadeia
-  Extrator→Enriquecedor→Auditor por documento, com `run_id` único e dead-letter.
-- **P4 — Executor com Port real:** `SiengeErpAdapter.block_payment` + `SmtpNotifier`,
-  com autorização explícita do cliente (feature-flag por tenant) e idempotência.
-- **P5 — Citações legais:** alimentar `legal_citations` nas regras fiscais (IN RFB,
-  LC 116/2003 p/ ISS) — vira a explicabilidade na tela do achado.
+- ✅ **P2 — Enriquecedor real:** `BrazilSinapiProvider` (Port) envolvendo
+  `app/rules/references.py`, injetado no Enricher.
+- ✅ **P3 — Orquestrador:** `SquadRunner.run_document` encadeia
+  Extrator→Enriquecedor→Auditor com `run_id` único e dead-letter.
+- ✅ **P4 — Executor com ação:** trava tripla — flag `tenant.auto_mitigation`
+  (opt-in, default OFF), idempotência por achado, adapter **log-only seguro por
+  padrão** (`erp_provider`/`notifier_provider`); `SiengeErpAdapter`/`SmtpNotifier`
+  são skeletons gated. `POST /disputes` (restrito) + `GET /disputes`.
+- **P5 — Citações legais:** alimentar `legal_citations` nas regras fiscais (IN RFB
+  971/2009 p/ INSS, LC 116/2003 p/ ISS) — explicabilidade na tela do achado.
 - **P6 — Multi-país:** adapter `us_pdf_invoice` + `RSMeansProvider` provando que o
   Core não muda (só acopla adapters).
-- **API/UI:** expor `GET /agents/reasoning/{run_id}` e `GET /disputes`; telas depois.
+- **API/UI:** expor `GET /agents/reasoning/{run_id}`; telas de prontuário e disputas.

@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     stripe_api_key: str | None = None
     stripe_webhook_secret: str | None = None
 
+    # Mitigação automática (Agente Executor). Default log-only = seguro, sem efeito externo.
+    erp_provider: str = "log_only"        # log_only | sienge
+    notifier_provider: str = "log_only"   # log_only | smtp
+
     @property
     def is_local(self) -> bool:
         return self.app_env == "local"

@@ -7,6 +7,7 @@ deliberada, idempotente e auditada. É a virada de advisory -> ação.
 
 from __future__ import annotations
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.agents.squad.base import AgentResult, SquadAgent, SquadContext
@@ -27,6 +28,15 @@ class ExecutorAgent(SquadAgent):
     def open_dispute(self, session: Session, ctx: SquadContext, *, finding_id: str,
                      reason: str, bill_external_id: str | None = None,
                      recipient: str | None = None) -> Dispute:
+        # idempotência: não reabre disputa já existente p/ o mesmo achado (exceto se falhou)
+        existing = session.execute(
+            select(Dispute).where(
+                Dispute.finding_id == finding_id, Dispute.status != "failed"
+            )
+        ).scalars().first()
+        if existing is not None:
+            return existing
+
         d = Dispute(
             tenant_id=ctx.tenant_id, finding_id=finding_id, status="draft",
             locale=ctx.locale, message=reason, recipient=recipient,
