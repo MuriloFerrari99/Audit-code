@@ -13,6 +13,7 @@ from app.api.routes_auth import router as auth_router
 from app.api.routes_findings import router as findings_router
 from app.api.routes_onboarding import router as onboarding_router
 from app.api.routes_reports import router as reports_router
+from app.api.routes_upload import router as upload_router
 from app.core.config import get_settings
 from app.core.db import db_healthy
 from app.core.logging import configure_logging, get_logger, request_id_var
@@ -20,6 +21,7 @@ from app.rules.builtin import register_builtin_rules
 from app.rules.fiscal_rules import register_fiscal_rules
 from app.rules.integrity_rules import register_integrity_rules
 from app.rules.payment_rules import register_payment_rules
+from app.rules.retention_rules import register_retention_rules
 
 settings = get_settings()
 configure_logging(settings.log_level)
@@ -30,6 +32,7 @@ register_builtin_rules()
 register_integrity_rules()
 register_fiscal_rules()
 register_payment_rules()
+register_retention_rules()
 
 app = FastAPI(title="Auditoria de Gastos — API", version="0.1.0")
 
@@ -47,6 +50,7 @@ app.include_router(auth_router)
 app.include_router(findings_router)
 app.include_router(reports_router)
 app.include_router(onboarding_router)
+app.include_router(upload_router)
 
 
 @app.get("/metrics")

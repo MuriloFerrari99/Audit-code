@@ -23,6 +23,7 @@ from app.models.sourcing import (
     BudgetItem,
     Creditor,
     Invoice,
+    InvoiceItem,
     OrderAuthorization,
     PurchaseOrder,
     PurchaseOrderItem,
@@ -59,6 +60,7 @@ __all__ = [
     "PurchaseOrderItem",
     "OrderAuthorization",
     "Invoice",
+    "InvoiceItem",
     "Bill",
     # catalog
     "CatalogItem",

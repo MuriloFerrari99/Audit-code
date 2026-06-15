@@ -31,6 +31,7 @@ CANONICAL_TABLES = [
     "purchase_order_item",
     "order_authorization",
     "invoice",
+    "invoice_item",
     "bill",
 ]
 TENANT_SCOPED.update(CANONICAL_TABLES)
@@ -151,10 +152,29 @@ class Invoice(Base, TenantScopedMixin, SourcedMixin):
     bill_external: Mapped[str | None] = mapped_column(
         String(64), nullable=True, index=True
     )  # billId Sienge
+    # Retenções (NF-e/NFS-e — diferencial fiscal INSS/ISS):
+    inss_retention: Mapped[float | None] = mapped_column(MONEY, nullable=True)
+    iss_retention: Mapped[float | None] = mapped_column(MONEY, nullable=True)
+    is_service: Mapped[bool | None] = mapped_column(nullable=True)  # NFS-e / serviço
     # Fase B (SEFAZ, exige certificado):
     nfe_key: Mapped[str | None] = mapped_column(String(60), nullable=True)
     nfe_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
     __table_args__ = (_natural_key("invoice"),)
+
+
+class InvoiceItem(Base, TenantScopedMixin):
+    """Item de nota fiscal (NF-e) — habilita auditoria de preço sobre a nota."""
+
+    __tablename__ = "invoice_item"
+    invoice_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    resource_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    raw_description: Mapped[str] = mapped_column(String(500), nullable=False)
+    ncm: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    cfop: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    qty: Mapped[float | None] = mapped_column(QTY, nullable=True)
+    unit_price: Mapped[float | None] = mapped_column(MONEY, nullable=True)
+    total: Mapped[float | None] = mapped_column(MONEY, nullable=True)
 
 
 class Bill(Base, TenantScopedMixin, SourcedMixin):
