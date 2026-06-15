@@ -48,6 +48,8 @@ croniter==6.2.2
     # via rq
 cryptography==49.0.0
     # via audit-backend (pyproject.toml)
+defusedxml==0.7.1
+    # via audit-backend (pyproject.toml)
 distro==1.9.0
     # via anthropic
 dnspython==2.8.0
