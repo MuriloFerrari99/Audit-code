@@ -81,8 +81,9 @@ services:
   frontend:
     build:
       context: ./frontend
-    environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?defina a URL pública da API}
+      # produção = estágio 'runner' (default). NEXT_PUBLIC_* é embutido no build:
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?defina a URL pública da API}
     restart: unless-stopped
     depends_on:
       - api
