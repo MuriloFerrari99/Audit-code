@@ -84,6 +84,8 @@ no Git. `Tenant.country/industry/currency` guiam a seleção de adapters.
 - ✅ **P6 — Multi-país:** `get_reference_provider(country, industry)` seleciona
   `BrazilSinapiProvider` (BR) ou `RSMeansProvider` (US, skeleton); o Runner usa o
   factory — acoplar país é só um adapter, Core/Enricher/Runner não mudam.
-- **Próximo (P7+):** ingerir base US (RSMeans) + adapter `us_pdf_invoice`; expor
-  `GET /agents/reasoning/{run_id}`; telas de prontuário e disputas; ligar o
-  SquadRunner num worker event-driven a partir da fila de uploads.
+- ✅ **P7 — Event-driven + telas:** outbox `squad_audit` (upload publica) drenado
+  por worker (`drain_audit_outbox`, tick 30s); `GET /agents/reasoning` + telas
+  `/agents` (prontuário) e `/disputes` (mitigação).
+- **Próximo (P8+):** ingerir base US (RSMeans) + adapter `us_pdf_invoice`; ligar
+  `auto_mitigation` real com adapter de ERP homologado; go-live (deploy + Stripe).

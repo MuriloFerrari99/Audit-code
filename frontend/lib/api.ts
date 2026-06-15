@@ -142,6 +142,11 @@ export const api = {
       { method: "POST" },
     ),
   me: () => request<import("./types").Me>("/auth/me"),
+  reasoning: (runId?: string) =>
+    request<{ logs: import("./types").ReasoningLog[] }>(
+      `/agents/reasoning${runId ? `?run_id=${encodeURIComponent(runId)}` : ""}`,
+    ),
+  disputesList: () => request<{ disputes: import("./types").DisputeRow[] }>("/disputes"),
   adminTenants: () =>
     request<{ period: string; tenants: import("./types").AdminTenant[] }>("/admin/tenants"),
   adminPlans: () => request<{ plans: import("./types").AdminPlan[] }>("/admin/plans"),

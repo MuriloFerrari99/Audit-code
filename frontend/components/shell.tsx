@@ -9,6 +9,8 @@ const NAV = [
   { href: "/", label: "Visão geral" },
   { href: "/upload", label: "Enviar documentos" },
   { href: "/findings", label: "Achados" },
+  { href: "/agents", label: "Prontuário" },
+  { href: "/disputes", label: "Disputas" },
   { href: "/quality", label: "Higiene de dados" },
   { href: "/calibration", label: "Aprendizado" },
   { href: "/billing", label: "Cobrança" },

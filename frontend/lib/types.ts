@@ -170,3 +170,27 @@ export interface AdminTenant {
   invoice_limit: number | null;
   total: string;
 }
+
+export interface ReasoningLog {
+  id: string;
+  run_id: string;
+  agent_name: string;
+  status: string;
+  confidence: string | null;
+  reasoning: string | null;
+  citations: string[] | null;
+  document_external_id: string | null;
+  finding_id: string | null;
+  created_at: string | null;
+}
+
+export interface DisputeRow {
+  id: string;
+  finding_id: string | null;
+  status: string;
+  channel: string | null;
+  erp_action: string | null;
+  erp_ref: string | null;
+  recipient: string | null;
+  locale: string | null;
+}

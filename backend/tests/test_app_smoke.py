@@ -24,5 +24,6 @@ def test_app_imports_and_exposes_routes():
         "/admin/tenants",
         "/admin/plans",
         "/disputes",
+        "/agents/reasoning",
     ):
         assert expected in paths, f"rota ausente: {expected}"
