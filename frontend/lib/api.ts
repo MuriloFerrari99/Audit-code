@@ -46,6 +46,25 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function upload<T>(path: string, form: FormData): Promise<T> {
+  const token = getToken();
+  // NÃO setar Content-Type: o browser define o boundary do multipart.
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (res.status === 401) {
+    setToken(null);
+    throw new ApiError(401, "não autenticado");
+  }
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, detail.detail ?? "erro no upload");
+  }
+  return (await res.json()) as T;
+}
+
 export const api = {
   async login(email: string, password: string, tenantId?: string): Promise<TokenResponse> {
     const body = JSON.stringify({ email, password, tenant_id: tenantId ?? null });
@@ -94,6 +113,16 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question }),
     }).then((r) => r.json() as Promise<{ answer: string }>),
+  uploadNfe: (files: File[]) => {
+    const form = new FormData();
+    for (const f of files) form.append("files", f);
+    return upload<import("./types").NfeUploadSummary>("/upload/nfe", form);
+  },
+  uploadPlanilha: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return upload<import("./types").PlanilhaUploadSummary>("/upload/planilha", form);
+  },
   runRules: () => request<{ found: Record<string, number> }>("/rules/run", { method: "POST" }),
   listFindings: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();

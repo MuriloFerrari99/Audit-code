@@ -7,6 +7,7 @@ import { setToken } from "@/lib/api";
 
 const NAV = [
   { href: "/", label: "Visão geral" },
+  { href: "/upload", label: "Enviar documentos" },
   { href: "/findings", label: "Achados" },
   { href: "/quality", label: "Higiene de dados" },
   { href: "/calibration", label: "Aprendizado" },

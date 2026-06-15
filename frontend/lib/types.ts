@@ -100,3 +100,15 @@ export interface QualityIssue {
   message: string;
   action: string;
 }
+
+export interface NfeUploadSummary {
+  invoices: number;
+  items: number;
+  dead_letters: number;
+}
+
+export interface PlanilhaUploadSummary {
+  bills: number;
+  dead_letters: number;
+  mapping: Record<string, string>;
+}
