@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
-import { setToken } from "@/lib/api";
+import { type ReactNode, useEffect, useState } from "react";
+import { api, setToken } from "@/lib/api";
 
 const NAV = [
   { href: "/", label: "Visão geral" },
@@ -17,6 +17,13 @@ const NAV = [
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    api.me().then((m) => setIsAdmin(m.is_platform_admin)).catch(() => setIsAdmin(false));
+  }, []);
+
+  const nav = isAdmin ? [...NAV, { href: "/admin", label: "Admin" }] : NAV;
 
   function logout() {
     setToken(null);
@@ -30,7 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-8">
             <span className="font-semibold text-brand">Auditoria de Gastos</span>
             <nav className="flex gap-1">
-              {NAV.map((item) => {
+              {nav.map((item) => {
                 const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
                 return (
                   <Link

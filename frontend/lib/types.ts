@@ -124,6 +124,7 @@ export interface BillingSummary {
   overage_amount: string;
   total: string;
   subscription_status: string;
+  upgrade_suggested?: string | null;
 }
 
 export interface GainshareSummary {
@@ -139,4 +140,33 @@ export interface Statement {
   period: string;
   monthly: Omit<BillingSummary, "subscription_status">;
   gainshare: GainshareSummary;
+}
+
+export interface Me {
+  user_id: string;
+  email: string;
+  tenant_id: string | null;
+  role: string | null;
+  is_platform_admin: boolean;
+}
+
+export interface AdminPlan {
+  code: string;
+  name: string;
+  base_price: string;
+  invoice_limit: number;
+  overage_price: string;
+  gainshare_pct: string | null;
+  active: boolean;
+}
+
+export interface AdminTenant {
+  tenant_id: string;
+  name: string;
+  status: string;
+  plan_code: string | null;
+  subscription_status: string;
+  invoices_used: number;
+  invoice_limit: number | null;
+  total: string;
 }

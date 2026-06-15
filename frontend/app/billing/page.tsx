@@ -71,6 +71,18 @@ export default function BillingPage() {
             </div>
           )}
 
+          {data.upgrade_suggested && (
+            <div className="mt-4 flex items-center justify-between rounded-lg border border-brand/30 bg-brand-muted px-4 py-3 text-sm">
+              <span className="text-brand">
+                Seu uso ultrapassou o limite do plano. Considere migrar para o plano{" "}
+                <b>{data.upgrade_suggested}</b> para reduzir o excedente.
+              </span>
+              <Button variant="ghost" onClick={() => activate(data.upgrade_suggested!)}>
+                Migrar plano
+              </Button>
+            </div>
+          )}
+
           <div className="mt-4 flex items-center justify-between">
             <span className="text-sm text-ink-soft">
               Assinatura: <b>{data.subscription_status}</b>

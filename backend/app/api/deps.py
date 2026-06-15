@@ -28,13 +28,14 @@ def get_current_user(authorization: str | None = Header(default=None)) -> Curren
     if claims.get("type") != "access":
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "tipo de token inválido")
     email = ""
+    is_admin = False
     with SessionLocal() as s:
         row = s.execute(
-            text("SELECT email FROM app_user WHERE id = :id AND is_active"),
+            text("SELECT email, is_superuser FROM app_user WHERE id = :id AND is_active"),
             {"id": claims["sub"]},
         ).first()
         if row:
-            email = row[0]
+            email, is_admin = row[0], bool(row[1])
     if not email:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "usuário inválido")
     return CurrentUser(
@@ -42,6 +43,7 @@ def get_current_user(authorization: str | None = Header(default=None)) -> Curren
         email=email,
         tenant_id=claims.get("tenant_id"),
         role=claims.get("role"),
+        is_platform_admin=is_admin,
     )
 
 
@@ -74,3 +76,10 @@ def require_role(*roles: str):
         return user
 
     return _checker
+
+
+def require_platform_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    """Acesso à plataforma (cross-tenant). Só usuários staff (is_superuser)."""
+    if not user.is_platform_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "acesso restrito à plataforma")
+    return user

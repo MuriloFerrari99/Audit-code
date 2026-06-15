@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
+from app.api.routes_admin import router as admin_router
 from app.api.routes_auth import router as auth_router
 from app.api.routes_billing import router as billing_router
 from app.api.routes_findings import router as findings_router
@@ -53,6 +54,7 @@ app.include_router(reports_router)
 app.include_router(onboarding_router)
 app.include_router(upload_router)
 app.include_router(billing_router)
+app.include_router(admin_router)
 
 
 @app.get("/metrics")

@@ -72,8 +72,12 @@ B2B brasileiro precisa de **PIX/boleto** (cartão sozinho não fecha). Opções:
    `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, e em cada `plan.features.stripe_price_id`
    o Price criado no painel da Stripe. Sem chaves, a cobrança fica desligada
    (provider=none) e o resto do sistema funciona normalmente.
-4. **Painel admin** completo (tenants, uso, gainshare, override de plano) +
-   **upgrade por consumo** (sugestão/auto quando estoura o limite).
+4. ✅ **Painel admin** (plataforma, cross-tenant): `GET /admin/tenants` (plano,
+   uso, fatura projetada), `GET /admin/plans`, `POST /admin/tenants/{id}/plan`
+   (override). Gated por `is_superuser` (`require_platform_admin`); tela `/admin`
+   só aparece p/ staff. **Upgrade por consumo**: `billing_summary.upgrade_suggested`
+   recomenda o menor plano que comporta o uso quando estoura o limite; banner no
+   painel do cliente. Promover staff: `python -m scripts.make_admin <email>`.
 
 ## Invariantes
 RLS em tudo que é tenant-scoped; `plan` global é read-only para o tenant. Webhook

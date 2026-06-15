@@ -32,6 +32,7 @@ class CurrentUser(BaseModel):
     email: str
     tenant_id: str | None
     role: str | None
+    is_platform_admin: bool = False
 
 
 class EvidenceOut(BaseModel):

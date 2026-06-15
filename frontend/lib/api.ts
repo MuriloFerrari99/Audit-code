@@ -141,6 +141,15 @@ export const api = {
       `/billing/checkout?plan_code=${encodeURIComponent(planCode)}`,
       { method: "POST" },
     ),
+  me: () => request<import("./types").Me>("/auth/me"),
+  adminTenants: () =>
+    request<{ period: string; tenants: import("./types").AdminTenant[] }>("/admin/tenants"),
+  adminPlans: () => request<{ plans: import("./types").AdminPlan[] }>("/admin/plans"),
+  adminSetPlan: (tenantId: string, planCode: string) =>
+    request<{ tenant_id: string; plan_code: string; status: string }>(
+      `/admin/tenants/${tenantId}/plan?plan_code=${encodeURIComponent(planCode)}`,
+      { method: "POST" },
+    ),
   monthlyReport: () => request<MonthlyReport>("/reports/monthly"),
   dossier: (id: string) => request<Record<string, unknown>>(`/findings/${id}/dossier`),
   quality: () =>
