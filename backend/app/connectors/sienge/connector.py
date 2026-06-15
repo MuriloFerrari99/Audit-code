@@ -52,8 +52,12 @@ ENDPOINTS: dict[EntityKind, EndpointSpec] = {
     EntityKind.CREDITOR: EndpointSpec("/creditors"),
     EntityKind.PURCHASE_ORDER: EndpointSpec("/purchase-orders"),
     EntityKind.BILL: EndpointSpec("/bills", needs_date=True),
-    EntityKind.QUOTATION: EndpointSpec("/purchase-quotations", bulk=True, needs_date=True, list_key="data"),
-    EntityKind.BUDGET_ITEM: EndpointSpec("/building-cost-estimation-items", bulk=True, list_key="data"),
+    EntityKind.QUOTATION: EndpointSpec(
+        "/purchase-quotations", bulk=True, needs_date=True, list_key="data"
+    ),
+    EntityKind.BUDGET_ITEM: EndpointSpec(
+        "/building-cost-estimation-items", bulk=True, list_key="data"
+    ),
     EntityKind.INVOICE: EndpointSpec("/purchase-invoices"),
 }
 
@@ -115,8 +119,12 @@ class SiengeConnector:
 
         def emit(rows):
             for row in rows:
-                ext = str(row.get("id") or row.get("purchaseQuotationId")
-                          or row.get("sequentialNumber") or row.get("documentNumber"))
+                ext = str(
+                    row.get("id")
+                    or row.get("purchaseQuotationId")
+                    or row.get("sequentialNumber")
+                    or row.get("documentNumber")
+                )
                 yield RawRecord(entity=entity, source_external_id=ext, payload=row)
 
         if spec.bulk:
@@ -131,7 +139,9 @@ class SiengeConnector:
         limit = 200
         offset = (cursor.page - 1) * limit
         while True:
-            resp = self._client.get(self._base(spec), params={**params, "limit": limit, "offset": offset})
+            resp = self._client.get(
+                self._base(spec), params={**params, "limit": limit, "offset": offset}
+            )
             data = resp.json()
             rows = data.get(spec.list_key, []) if isinstance(data, dict) else data
             if not rows:
@@ -175,11 +185,15 @@ class SiengeConnector:
             base.update(name=p.get("name"), cnpj_cpf=p.get("cnpj") or p.get("cpf"))
         # QUOTATION: itens/fornecedores aninhados (purchaseQuotationItems/Suppliers) —
         # decompostos na carga canônica (Fase de ingest canônica).
-        return CanonicalRecord(entity=raw.entity, source_external_id=raw.source_external_id, fields=base)
+        return CanonicalRecord(
+            entity=raw.entity, source_external_id=raw.source_external_id, fields=base
+        )
 
     def health(self) -> ConnectorHealth:
         if self._use_fixtures:
-            return ConnectorHealth(ok=True, detail="modo fixtures (sem credencial)", checked_at=now_utc())
+            return ConnectorHealth(
+                ok=True, detail="modo fixtures (sem credencial)", checked_at=now_utc()
+            )
         try:
             self.authenticate()
             assert self._client is not None

@@ -49,12 +49,14 @@ def parse_brasilapi(p: dict) -> dict:
     """Puro: payload BrasilAPI -> campos canônicos de contraparte (LGPD: QSA mínimo)."""
     qsa = []
     for s in p.get("qsa") or []:
-        qsa.append({
-            "nome": s.get("nome_socio"),
-            "doc": _mask_doc(s.get("cnpj_cpf_do_socio")),
-            "qualificacao": s.get("qualificacao_socio"),
-            "entrada": s.get("data_entrada_sociedade"),
-        })
+        qsa.append(
+            {
+                "nome": s.get("nome_socio"),
+                "doc": _mask_doc(s.get("cnpj_cpf_do_socio")),
+                "qualificacao": s.get("qualificacao_socio"),
+                "entrada": s.get("data_entrada_sociedade"),
+            }
+        )
     return {
         "razao_social": p.get("razao_social"),
         "situacao_cadastral": p.get("descricao_situacao_cadastral"),
@@ -93,7 +95,9 @@ def check(session: Session, cnpj_raw: str) -> Counterparty | None:
             existing.status = "indisponivel"
             existing.checked_at = now_utc()
             return existing
-        cp = Counterparty(cnpj=cnpj, status="indisponivel", source="brasilapi", checked_at=now_utc())
+        cp = Counterparty(
+            cnpj=cnpj, status="indisponivel", source="brasilapi", checked_at=now_utc()
+        )
         session.add(cp)
         session.flush()
         return cp
@@ -124,9 +128,11 @@ def refresh_for_tenant(session: Session, tenant_id: str, limit: int | None = Non
     fontes; cacheado. Roda em background (não bloqueia auditoria)."""
     from app.models.sourcing import Creditor
 
-    rows = session.execute(
-        select(Creditor.cnpj_cpf).where(Creditor.cnpj_cpf.is_not(None)).distinct()
-    ).scalars().all()
+    rows = (
+        session.execute(select(Creditor.cnpj_cpf).where(Creditor.cnpj_cpf.is_not(None)).distinct())
+        .scalars()
+        .all()
+    )
     cnpjs = [d for d in rows if is_cnpj(d)]
     if limit:
         cnpjs = cnpjs[:limit]

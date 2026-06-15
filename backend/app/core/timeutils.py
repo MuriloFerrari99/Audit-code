@@ -6,7 +6,7 @@ calculados na timezone de negócio (America/Sao_Paulo por padrão).
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from app.core.config import get_settings
@@ -17,19 +17,19 @@ def business_tz() -> ZoneInfo:
 
 
 def now_utc() -> datetime:
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)
 
 
 def to_utc(dt: datetime) -> datetime:
     """Normaliza qualquer datetime para UTC. Naive é assumido como tz de negócio."""
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=business_tz())
-    return dt.astimezone(timezone.utc)
+    return dt.astimezone(UTC)
 
 
 def to_business(dt: datetime) -> datetime:
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt.astimezone(business_tz())
 
 

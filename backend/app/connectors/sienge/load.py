@@ -51,8 +51,16 @@ def load_canonical(
     """Carrega o canônico. max_orders limita a 1ª carga (a base tem milhares de
     pedidos, cada um com um sub-call de itens)."""
     connector.authenticate()
-    summary = {"creditor": 0, "purchase_order": 0, "purchase_order_item": 0,
-               "bill": 0, "budget_item": 0, "quotation": 0, "invoice": 0, "dead_letters": 0}
+    summary = {
+        "creditor": 0,
+        "purchase_order": 0,
+        "purchase_order_item": 0,
+        "bill": 0,
+        "budget_item": 0,
+        "quotation": 0,
+        "invoice": 0,
+        "dead_letters": 0,
+    }
 
     with tenant_session(tenant_id) as s:
         # 1) Credores
@@ -61,12 +69,19 @@ def load_canonical(
             f = T.to_creditor(raw.payload)
             ext = f["source_external_id"]
             obj = s.execute(
-                select(Creditor).where(Creditor.source == "sienge", Creditor.source_external_id == ext)
+                select(Creditor).where(
+                    Creditor.source == "sienge", Creditor.source_external_id == ext
+                )
             ).scalar_one_or_none()
             if obj is None:
-                obj = Creditor(tenant_id=tenant_id, source="sienge", source_external_id=ext,
-                               name=f["name"] or "(sem nome)", cnpj_cpf=f["cnpj_cpf"],
-                               content_hash=_hash(f))
+                obj = Creditor(
+                    tenant_id=tenant_id,
+                    source="sienge",
+                    source_external_id=ext,
+                    name=f["name"] or "(sem nome)",
+                    cnpj_cpf=f["cnpj_cpf"],
+                    content_hash=_hash(f),
+                )
                 s.add(obj)
                 s.flush()
                 summary["creditor"] += 1
@@ -85,8 +100,9 @@ def load_canonical(
                 select(Project).where(Project.external_code == building_ext)
             ).scalar_one_or_none()
             if proj is None:
-                proj = Project(tenant_id=tenant_id, name=f"Obra {building_ext}",
-                               external_code=building_ext)
+                proj = Project(
+                    tenant_id=tenant_id, name=f"Obra {building_ext}", external_code=building_ext
+                )
                 s.add(proj)
                 s.flush()
             project_map[building_ext] = str(proj.id)
@@ -96,18 +112,23 @@ def load_canonical(
         for raw in connector.pull(EntityKind.PURCHASE_ORDER, PullCursor()):
             if max_orders is not None and processed_orders >= max_orders:
                 break
-            processed_orders += 1
+            processed_orders += 1  # noqa: SIM113 (contador manual com break por limite)
             f = T.to_purchase_order(raw.payload)
             ext = f["source_external_id"]
             order = s.execute(
-                select(PurchaseOrder).where(PurchaseOrder.source == "sienge",
-                                            PurchaseOrder.source_external_id == ext)
+                select(PurchaseOrder).where(
+                    PurchaseOrder.source == "sienge", PurchaseOrder.source_external_id == ext
+                )
             ).scalar_one_or_none()
             project_id = get_project(f["building_ext"])
             creditor_id = creditor_map.get(f["supplier_ext"] or "")
             if order is None:
-                order = PurchaseOrder(tenant_id=tenant_id, source="sienge", source_external_id=ext,
-                                      content_hash=_hash(f))
+                order = PurchaseOrder(
+                    tenant_id=tenant_id,
+                    source="sienge",
+                    source_external_id=ext,
+                    content_hash=_hash(f),
+                )
                 s.add(order)
                 summary["purchase_order"] += 1
             order.total = _dec(f["total"])
@@ -124,14 +145,20 @@ def load_canonical(
                 items = connector.pull_order_items(ext)
             except Exception as e:  # não derruba o batch (ADR-15) — mas NÃO em silêncio (A-3)
                 log.warning("load.items.error", order=ext, error=str(e))
-                s.add(DeadLetter(tenant_id=tenant_id, source="sienge",
-                                 entity_type="purchase_order_item", ref=ext,
-                                 reason=f"falha ao puxar itens: {e}"[:500]))
+                s.add(
+                    DeadLetter(
+                        tenant_id=tenant_id,
+                        source="sienge",
+                        entity_type="purchase_order_item",
+                        ref=ext,
+                        reason=f"falha ao puxar itens: {e}"[:500],
+                    )
+                )
                 summary["dead_letters"] += 1
                 items = []
             for it in items:
                 fi = T.to_order_item(it)
-                key = f"{ext}:{it.get('itemNumber') or fi['resource_code']}"
+                f"{ext}:{it.get('itemNumber') or fi['resource_code']}"
                 exists = s.execute(
                     select(PurchaseOrderItem).where(
                         PurchaseOrderItem.order_id == order.id,
@@ -139,12 +166,17 @@ def load_canonical(
                     )
                 ).scalar_one_or_none()
                 if exists is None:
-                    s.add(PurchaseOrderItem(
-                        tenant_id=tenant_id, order_id=order.id,
-                        resource_code=fi["resource_code"],
-                        raw_description=fi["raw_description"] or "(sem descrição)",
-                        qty=_dec(fi["qty"]), unit_price=_dec(fi["unit_price"]), unit=fi["unit"],
-                    ))
+                    s.add(
+                        PurchaseOrderItem(
+                            tenant_id=tenant_id,
+                            order_id=order.id,
+                            resource_code=fi["resource_code"],
+                            raw_description=fi["raw_description"] or "(sem descrição)",
+                            qty=_dec(fi["qty"]),
+                            unit_price=_dec(fi["unit_price"]),
+                            unit=fi["unit"],
+                        )
+                    )
                     summary["purchase_order_item"] += 1
 
         # 3b) Orçamento (building-cost-estimation-items): orçado vs medido (R4)
@@ -154,13 +186,18 @@ def load_canonical(
             if not ext:
                 continue
             b = s.execute(
-                select(BudgetItem).where(BudgetItem.source == "sienge",
-                                         BudgetItem.source_external_id == ext)
+                select(BudgetItem).where(
+                    BudgetItem.source == "sienge", BudgetItem.source_external_id == ext
+                )
             ).scalar_one_or_none()
             if b is None:
-                b = BudgetItem(tenant_id=tenant_id, source="sienge", source_external_id=ext,
-                               raw_description=f["raw_description"] or "(sem descrição)",
-                               content_hash=_hash(f))
+                b = BudgetItem(
+                    tenant_id=tenant_id,
+                    source="sienge",
+                    source_external_id=ext,
+                    raw_description=f["raw_description"] or "(sem descrição)",
+                    content_hash=_hash(f),
+                )
                 s.add(b)
                 summary["budget_item"] += 1
             b.project_id = get_project(f["building_ext"])
@@ -179,8 +216,12 @@ def load_canonical(
                 select(Bill).where(Bill.source == "sienge", Bill.source_external_id == ext)
             ).scalar_one_or_none()
             if bill is None:
-                bill = Bill(tenant_id=tenant_id, source="sienge", source_external_id=ext,
-                            content_hash=_hash(f))
+                bill = Bill(
+                    tenant_id=tenant_id,
+                    source="sienge",
+                    source_external_id=ext,
+                    content_hash=_hash(f),
+                )
                 s.add(bill)
                 summary["bill"] += 1
             bill.amount = _dec(f["amount"])
@@ -197,12 +238,18 @@ def load_canonical(
                 if not ext:
                     continue
                 q = s.execute(
-                    select(Quotation).where(Quotation.source == "sienge",
-                                            Quotation.source_external_id == ext)
+                    select(Quotation).where(
+                        Quotation.source == "sienge", Quotation.source_external_id == ext
+                    )
                 ).scalar_one_or_none()
                 if q is None:
-                    q = Quotation(tenant_id=tenant_id, source="sienge", source_external_id=ext,
-                                  raw_description=r["raw_description"], content_hash=_hash(r))
+                    q = Quotation(
+                        tenant_id=tenant_id,
+                        source="sienge",
+                        source_external_id=ext,
+                        raw_description=r["raw_description"],
+                        content_hash=_hash(r),
+                    )
                     s.add(q)
                     summary["quotation"] += 1
                 q.resource_code = r["resource_code"]
@@ -221,8 +268,12 @@ def load_canonical(
                 select(Invoice).where(Invoice.source == "sienge", Invoice.source_external_id == ext)
             ).scalar_one_or_none()
             if inv is None:
-                inv = Invoice(tenant_id=tenant_id, source="sienge", source_external_id=ext,
-                              content_hash=_hash(f))
+                inv = Invoice(
+                    tenant_id=tenant_id,
+                    source="sienge",
+                    source_external_id=ext,
+                    content_hash=_hash(f),
+                )
                 s.add(inv)
                 summary["invoice"] += 1
             inv.number = f["number"]
@@ -245,4 +296,5 @@ def load_canonical(
 
 def _parse_dt(value):
     from app.connectors.sienge.connector import _dt
+
     return _dt(value)

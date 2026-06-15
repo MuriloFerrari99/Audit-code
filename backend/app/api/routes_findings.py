@@ -114,7 +114,9 @@ def post_review(
     ),
 ) -> FindingOut:
     try:
-        finding = review_finding(db, user.tenant_id, finding_id, body.decision, user.email, body.reason)
+        finding = review_finding(
+            db, user.tenant_id, finding_id, body.decision, user.email, body.reason
+        )
     except DomainError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
     return _to_out(finding, get_evidence(db, finding_id))

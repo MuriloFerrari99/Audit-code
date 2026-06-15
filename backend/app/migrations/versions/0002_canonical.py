@@ -38,7 +38,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
+    op.get_bind()
     # Remove só o que foi criado aqui (preserva tenancy da 0001).
     tables = [t for t in reversed(Base.metadata.sorted_tables) if t.name not in ALREADY]
     for t in tables:

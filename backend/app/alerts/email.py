@@ -68,12 +68,15 @@ def get_email_provider() -> EmailProvider:
 def should_alert(finding: Finding) -> bool:
     if finding.severity in ALERT_SEVERITIES:
         return True
-    if finding.exposed_amount is not None and Decimal(str(finding.exposed_amount)) >= ALERT_MIN_AMOUNT:
-        return True
-    return False
+    return bool(
+        finding.exposed_amount is not None
+        and Decimal(str(finding.exposed_amount)) >= ALERT_MIN_AMOUNT
+    )
 
 
-def alert_for_finding(finding: Finding, recipients: list[str], provider: EmailProvider | None = None) -> bool:
+def alert_for_finding(
+    finding: Finding, recipients: list[str], provider: EmailProvider | None = None
+) -> bool:
     if not should_alert(finding):
         return False
     provider = provider or get_email_provider()

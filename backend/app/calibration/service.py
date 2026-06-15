@@ -31,10 +31,14 @@ def _suggest(rule_id: str, samples: int, accept_rate: float) -> str | None:
     if samples < MIN_SAMPLES:
         return None
     if accept_rate <= 1 - HIGH_DISMISS:
-        return (f"{rule_id}: {round((1-accept_rate)*100)}% descartados em {samples} revisões — "
-                f"reveja o threshold ou considere desligar esta regra para este cliente.")
+        return (
+            f"{rule_id}: {round((1 - accept_rate) * 100)}% descartados em {samples} revisões — "
+            f"reveja o threshold ou considere desligar esta regra para este cliente."
+        )
     if accept_rate >= HIGH_ACCEPT:
-        return f"{rule_id}: {round(accept_rate*100)}% aceitos — regra confiável para este cliente."
+        return (
+            f"{rule_id}: {round(accept_rate * 100)}% aceitos — regra confiável para este cliente."
+        )
     return None
 
 
@@ -71,8 +75,16 @@ def recompute(session: Session, tenant_id: str) -> dict:
         cal.acceptance_rate = rate
         cal.confidence_factor = factor
 
-        stats.append({"rule_id": rule_id, "samples": samples, "accepted": accepted,
-                      "dismissed": dismissed, "acceptance_rate": rate, "confidence_factor": factor})
+        stats.append(
+            {
+                "rule_id": rule_id,
+                "samples": samples,
+                "accepted": accepted,
+                "dismissed": dismissed,
+                "acceptance_rate": rate,
+                "confidence_factor": factor,
+            }
+        )
         s = _suggest(rule_id, samples, rate if rate is not None else 0.0)
         if s:
             suggestions.append(s)
@@ -86,9 +98,16 @@ def get_calibration(session: Session) -> dict:
     stats, suggestions = [], []
     for c in rows:
         rate = float(c.acceptance_rate) if c.acceptance_rate is not None else None
-        stats.append({"rule_id": c.rule_id, "samples": c.samples, "accepted": c.accepted,
-                      "dismissed": c.dismissed, "acceptance_rate": rate,
-                      "confidence_factor": float(c.confidence_factor)})
+        stats.append(
+            {
+                "rule_id": c.rule_id,
+                "samples": c.samples,
+                "accepted": c.accepted,
+                "dismissed": c.dismissed,
+                "acceptance_rate": rate,
+                "confidence_factor": float(c.confidence_factor),
+            }
+        )
         s = _suggest(c.rule_id, c.samples, rate if rate is not None else 0.0)
         if s:
             suggestions.append(s)
@@ -97,7 +116,5 @@ def get_calibration(session: Session) -> dict:
 
 def get_factors(session: Session) -> dict[str, float]:
     """Fatores de confiança por regra para o tenant atual (RLS). Default vazio."""
-    rows = session.execute(
-        select(RuleCalibration.rule_id, RuleCalibration.confidence_factor)
-    ).all()
+    rows = session.execute(select(RuleCalibration.rule_id, RuleCalibration.confidence_factor)).all()
     return {rid: float(f) for rid, f in rows}

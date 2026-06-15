@@ -30,7 +30,7 @@ class Counterparty(Base):
     data_abertura: Mapped[str | None] = mapped_column(String(10), nullable=True)  # YYYY-MM-DD
     cnae: Mapped[str | None] = mapped_column(String(200), nullable=True)
     sancoes: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # [{fonte,tipo,orgao,...}]
-    qsa: Mapped[list | None] = mapped_column(JSONB, nullable=True)      # sócios minimizados (LGPD)
+    qsa: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # sócios minimizados (LGPD)
     status: Mapped[str] = mapped_column(String(20), default="ok", nullable=False)
     source: Mapped[str | None] = mapped_column(String(40), nullable=True)
     checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

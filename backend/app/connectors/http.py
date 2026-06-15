@@ -59,14 +59,22 @@ def _is_transient(exc: BaseException) -> bool:
 
 
 class ResilientClient:
-    def __init__(self, base_url: str, auth: tuple[str, str] | None, bucket: TokenBucket,
-                 tenant_key: str, timeout: float = 30.0):
+    def __init__(
+        self,
+        base_url: str,
+        auth: tuple[str, str] | None,
+        bucket: TokenBucket,
+        tenant_key: str,
+        timeout: float = 30.0,
+    ):
         self._client = httpx.Client(base_url=base_url, auth=auth, timeout=timeout)
         self._bucket = bucket
         self._tenant_key = tenant_key
 
     @retry(
-        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.TransportError, TransientError)),
+        retry=retry_if_exception_type(
+            (httpx.HTTPStatusError, httpx.TransportError, TransientError)
+        ),
         wait=wait_random_exponential(multiplier=0.5, max=20),
         stop=stop_after_attempt(5),
         reraise=True,

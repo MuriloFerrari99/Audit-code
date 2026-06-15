@@ -11,10 +11,26 @@ from __future__ import annotations
 import unicodedata
 
 NON_MATERIAL = (
-    "mao de obra", "m.o", "servico", "empreitada", "locacao", "aluguel",
-    "alimentacao", "frete", "taxa", "imposto", "medicao", "terceiriz",
-    "consultoria", "honorario", "comissao", "mensalidade", "manutencao",
-    "transporte", "diaria", "hospedagem",
+    "mao de obra",
+    "m.o",
+    "servico",
+    "empreitada",
+    "locacao",
+    "aluguel",
+    "alimentacao",
+    "frete",
+    "taxa",
+    "imposto",
+    "medicao",
+    "terceiriz",
+    "consultoria",
+    "honorario",
+    "comissao",
+    "mensalidade",
+    "manutencao",
+    "transporte",
+    "diaria",
+    "hospedagem",
 )
 
 # Se max/min do preço do mesmo insumo passar disto, o código de insumo mistura
@@ -26,8 +42,7 @@ RATIO_MAX = 30.0
 
 def _norm(s: str | None) -> str:
     return "".join(
-        c for c in unicodedata.normalize("NFKD", (s or "").lower())
-        if not unicodedata.combining(c)
+        c for c in unicodedata.normalize("NFKD", (s or "").lower()) if not unicodedata.combining(c)
     )
 
 

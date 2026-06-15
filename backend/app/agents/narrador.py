@@ -15,7 +15,9 @@ from app.agents.llm import LLMClient
 from app.models.findings import Finding, FindingStatus, ValueLedger
 
 
-def monthly_summary(session: Session, tenant_id: str, period: str, llm: LLMClient | None = None) -> dict:
+def monthly_summary(
+    session: Session, tenant_id: str, period: str, llm: LLMClient | None = None
+) -> dict:
     exposed = session.execute(
         select(func.coalesce(func.sum(Finding.exposed_amount), 0)).where(
             Finding.status == FindingStatus.OPEN.value
@@ -30,9 +32,7 @@ def monthly_summary(session: Session, tenant_id: str, period: str, llm: LLMClien
         select(func.count()).where(Finding.status == FindingStatus.OPEN.value)
     ).scalar_one()
     by_rule = dict(
-        session.execute(
-            select(Finding.rule_id, func.count()).group_by(Finding.rule_id)
-        ).all()
+        session.execute(select(Finding.rule_id, func.count()).group_by(Finding.rule_id)).all()
     )
 
     numbers = {

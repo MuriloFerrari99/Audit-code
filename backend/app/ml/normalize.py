@@ -27,8 +27,8 @@ def _strip_accents(s: str) -> str:
 
 def normalize_description(raw: str) -> str:
     s = _strip_accents(raw).lower()
-    s = _BITOLA.sub(r"\1mm", s)          # Ø10 -> 10mm
-    s = _UNIT.sub(r"\1\2", s)            # "10.0 mm" -> "10.0mm"
+    s = _BITOLA.sub(r"\1mm", s)  # Ø10 -> 10mm
+    s = _UNIT.sub(r"\1\2", s)  # "10.0 mm" -> "10.0mm"
     # sinônimos por palavra inteira
     for src, dst in _SYNONYMS.items():
         s = re.sub(rf"\b{src}\b", dst, s)

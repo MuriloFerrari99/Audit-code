@@ -132,7 +132,9 @@ class Invoice(Base, TenantScopedMixin, SourcedMixin):
     """Nota / atendimento ao pedido (deliveries-attended)."""
 
     __tablename__ = "invoice"
-    order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    order_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
     creditor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     number: Mapped[str | None] = mapped_column(String(60), nullable=True)
     series: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -146,7 +148,9 @@ class Invoice(Base, TenantScopedMixin, SourcedMixin):
     # Dimensão fiscal (Fase A — dado do Sienge):
     consistency: Mapped[str | None] = mapped_column(String(2), nullable=True)  # S/N (flag Sienge)
     eletronic_invoice_id: Mapped[str | None] = mapped_column(String(60), nullable=True)  # NF-e
-    bill_external: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # billId Sienge
+    bill_external: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )  # billId Sienge
     # Fase B (SEFAZ, exige certificado):
     nfe_key: Mapped[str | None] = mapped_column(String(60), nullable=True)
     nfe_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
@@ -157,7 +161,9 @@ class Bill(Base, TenantScopedMixin, SourcedMixin):
     """Título / pagamento (contas a pagar)."""
 
     __tablename__ = "bill"
-    order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    order_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
     creditor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     amount: Mapped[float | None] = mapped_column(MONEY, nullable=True)
     document_number: Mapped[str | None] = mapped_column(String(60), nullable=True)

@@ -61,8 +61,11 @@ def _build_chain(session: Session, evidence: list[FindingEvidence]) -> dict:
         if e.entity_type == "purchase_order" and e.entity_id:
             order = session.get(PurchaseOrder, e.entity_id)
             if order:
-                chain["order"] = {"id": str(order.id), "total": str(order.total),
-                                  "ordered_at": str(order.ordered_at)}
+                chain["order"] = {
+                    "id": str(order.id),
+                    "total": str(order.total),
+                    "ordered_at": str(order.ordered_at),
+                }
                 items = session.execute(
                     select(PurchaseOrderItem).where(PurchaseOrderItem.order_id == order.id)
                 ).scalars()
@@ -73,8 +76,10 @@ def _build_chain(session: Session, evidence: list[FindingEvidence]) -> dict:
         if e.entity_type == "quotation" and e.entity_id:
             q = session.get(Quotation, e.entity_id)
             if q:
-                chain["cheapest_quotation"] = {"unit_price": str(q.unit_price),
-                                               "valid_until": str(q.valid_until)}
+                chain["cheapest_quotation"] = {
+                    "unit_price": str(q.unit_price),
+                    "valid_until": str(q.valid_until),
+                }
         if e.entity_type == "bill" and e.entity_id:
             b = session.get(Bill, e.entity_id)
             if b:

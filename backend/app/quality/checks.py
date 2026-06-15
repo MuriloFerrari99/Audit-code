@@ -32,9 +32,14 @@ def check_duplicate_creditors(session: Session) -> list[DataQualityIssue]:
         .having(func.count() > 1)
     ).all()
     return [
-        DataQualityIssue("DQ6", "media", "creditor", cnpj,
-                         f"CNPJ {cnpj} com {n} cadastros (ids {ids})",
-                         "unificar fornecedor no Sienge")
+        DataQualityIssue(
+            "DQ6",
+            "media",
+            "creditor",
+            cnpj,
+            f"CNPJ {cnpj} com {n} cadastros (ids {ids})",
+            "unificar fornecedor no Sienge",
+        )
         for cnpj, n, ids in rows
     ]
 
@@ -46,9 +51,14 @@ def check_zero_price_quotations(session: Session) -> list[DataQualityIssue]:
         .limit(2000)
     ).all()
     return [
-        DataQualityIssue("DQ3", "media", "quotation", str(qid),
-                         f"cotação com preço R$ 0 (insumo {rc})",
-                         "remover/corrigir cotação placeholder no Sienge")
+        DataQualityIssue(
+            "DQ3",
+            "media",
+            "quotation",
+            str(qid),
+            f"cotação com preço R$ 0 (insumo {rc})",
+            "remover/corrigir cotação placeholder no Sienge",
+        )
         for qid, rc in rows
     ]
 
@@ -56,14 +66,22 @@ def check_zero_price_quotations(session: Session) -> list[DataQualityIssue]:
 def check_budget_without_measurement(session: Session) -> list[DataQualityIssue]:
     rows = session.execute(
         select(BudgetItem.id, BudgetItem.raw_description)
-        .where(BudgetItem.qty_budgeted.is_not(None), BudgetItem.qty_budgeted > 0,
-               BudgetItem.qty_measured.is_(None))
+        .where(
+            BudgetItem.qty_budgeted.is_not(None),
+            BudgetItem.qty_budgeted > 0,
+            BudgetItem.qty_measured.is_(None),
+        )
         .limit(2000)
     ).all()
     return [
-        DataQualityIssue("DQ5", "baixa", "budget_item", str(bid),
-                         f"orçamento sem medição: {desc[:40]}",
-                         "lançar medição no Sienge p/ habilitar auditoria de quantidade")
+        DataQualityIssue(
+            "DQ5",
+            "baixa",
+            "budget_item",
+            str(bid),
+            f"orçamento sem medição: {desc[:40]}",
+            "lançar medição no Sienge p/ habilitar auditoria de quantidade",
+        )
         for bid, desc in rows
     ]
 
@@ -71,15 +89,22 @@ def check_budget_without_measurement(session: Session) -> list[DataQualityIssue]
 def check_items_without_code_or_price(session: Session) -> list[DataQualityIssue]:
     rows = session.execute(
         select(PurchaseOrderItem.id, PurchaseOrderItem.raw_description)
-        .where((PurchaseOrderItem.resource_code.is_(None))
-               | (PurchaseOrderItem.unit_price.is_(None))
-               | (PurchaseOrderItem.unit_price <= 0))
+        .where(
+            (PurchaseOrderItem.resource_code.is_(None))
+            | (PurchaseOrderItem.unit_price.is_(None))
+            | (PurchaseOrderItem.unit_price <= 0)
+        )
         .limit(2000)
     ).all()
     return [
-        DataQualityIssue("DQ1", "alta", "purchase_order_item", str(iid),
-                         f"item sem código/preço: {desc[:40]}",
-                         "preencher código de insumo/preço no pedido")
+        DataQualityIssue(
+            "DQ1",
+            "alta",
+            "purchase_order_item",
+            str(iid),
+            f"item sem código/preço: {desc[:40]}",
+            "preencher código de insumo/preço no pedido",
+        )
         for iid, desc in rows
     ]
 
@@ -99,10 +124,16 @@ def check_generic_resources(session: Session) -> list[DataQualityIssue]:
     issues = []
     for rc, n, lo, hi in rows:
         if lo and float(hi) / float(lo) > 12:
-            issues.append(DataQualityIssue(
-                "DQ2", "media", "resource", str(rc),
-                f"insumo {rc} com preço {lo}–{hi} (n={n}) — cadastro mistura itens",
-                "desmembrar o código de insumo no Sienge"))
+            issues.append(
+                DataQualityIssue(
+                    "DQ2",
+                    "media",
+                    "resource",
+                    str(rc),
+                    f"insumo {rc} com preço {lo}–{hi} (n={n}) — cadastro mistura itens",
+                    "desmembrar o código de insumo no Sienge",
+                )
+            )
     return issues
 
 

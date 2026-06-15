@@ -28,30 +28,38 @@ def bootstrap_roles() -> None:
             text("SELECT 1 FROM pg_roles WHERE rolname = :r"), {"r": role}
         ).first()
         if exists:
-            conn.execute(text(
-                f"ALTER ROLE {role} WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB "
-                f"NOCREATEROLE PASSWORD '{pw}'"
-            ))
+            conn.execute(
+                text(
+                    f"ALTER ROLE {role} WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB "
+                    f"NOCREATEROLE PASSWORD '{pw}'"
+                )
+            )
         else:
-            conn.execute(text(
-                f"CREATE ROLE {role} WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB "
-                f"NOCREATEROLE PASSWORD '{pw}'"
-            ))
+            conn.execute(
+                text(
+                    f"CREATE ROLE {role} WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB "
+                    f"NOCREATEROLE PASSWORD '{pw}'"
+                )
+            )
 
         # privilégios mínimos: CRUD nas tabelas existentes + futuras
         conn.execute(text(f"GRANT USAGE ON SCHEMA public TO {role}"))
-        conn.execute(text(
-            f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {role}"
-        ))
+        conn.execute(
+            text(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {role}")
+        )
         conn.execute(text(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {role}"))
-        conn.execute(text(
-            f"ALTER DEFAULT PRIVILEGES FOR ROLE {owner} IN SCHEMA public "
-            f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {role}"
-        ))
-        conn.execute(text(
-            f"ALTER DEFAULT PRIVILEGES FOR ROLE {owner} IN SCHEMA public "
-            f"GRANT USAGE, SELECT ON SEQUENCES TO {role}"
-        ))
+        conn.execute(
+            text(
+                f"ALTER DEFAULT PRIVILEGES FOR ROLE {owner} IN SCHEMA public "
+                f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {role}"
+            )
+        )
+        conn.execute(
+            text(
+                f"ALTER DEFAULT PRIVILEGES FOR ROLE {owner} IN SCHEMA public "
+                f"GRANT USAGE, SELECT ON SEQUENCES TO {role}"
+            )
+        )
     log.info("bootstrap.roles.done", role=role)
 
 

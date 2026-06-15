@@ -7,19 +7,58 @@ from __future__ import annotations
 from app.connectors.sienge import transform as t
 
 # Amostras reais (campos validados em 2026-06 contra api.sienge.com.br/alumbra).
-CREDITOR = {"id": 1, "name": "SOFTPLAN PLANEJAMENTO E SISTEMAS LTDA", "cpf": None,
-            "cnpj": "82.845.322/0001-04", "active": True}
-COMPANY = {"id": 3, "name": "ALUMBRA EMPREENDIMENTOS", "tradeName": "", "cnpj": "00.000.000/0001-00"}
-ORDER = {"id": 8649, "totalAmount": 1175.0, "status": "PENDING", "date": "2026-06-12",
-         "supplierId": 1768, "buildingId": 202, "forecastBillId": 44059, "authorized": True}
-ITEM = {"itemNumber": 1, "resourceId": 555, "resourceCode": "MAT-555",
-        "resourceDescription": "CIMENTO CP-II 50KG", "quantity": 100.0, "unitPrice": 31.5,
-        "unitOfMeasure": "SC"}
-BILL = {"id": 44059, "creditorId": 1768, "totalInvoiceAmount": 1200.0, "status": "PAID",
-        "issueDate": "2026-06-10", "installmentsNumber": 1}
-BUDGET = {"id": 1, "buildingId": 202, "buildingName": "BRAVA GREEN - OBRA",
-          "description": "LIGACOES DEFINITIVAS", "workItemId": 5001, "quantity": 100.0,
-          "measuredQuantity": 130.0, "unitPrice": 90.0, "totalPrice": 9000.0, "unitOfMeasure": "m3"}
+CREDITOR = {
+    "id": 1,
+    "name": "SOFTPLAN PLANEJAMENTO E SISTEMAS LTDA",
+    "cpf": None,
+    "cnpj": "82.845.322/0001-04",
+    "active": True,
+}
+COMPANY = {
+    "id": 3,
+    "name": "ALUMBRA EMPREENDIMENTOS",
+    "tradeName": "",
+    "cnpj": "00.000.000/0001-00",
+}
+ORDER = {
+    "id": 8649,
+    "totalAmount": 1175.0,
+    "status": "PENDING",
+    "date": "2026-06-12",
+    "supplierId": 1768,
+    "buildingId": 202,
+    "forecastBillId": 44059,
+    "authorized": True,
+}
+ITEM = {
+    "itemNumber": 1,
+    "resourceId": 555,
+    "resourceCode": "MAT-555",
+    "resourceDescription": "CIMENTO CP-II 50KG",
+    "quantity": 100.0,
+    "unitPrice": 31.5,
+    "unitOfMeasure": "SC",
+}
+BILL = {
+    "id": 44059,
+    "creditorId": 1768,
+    "totalInvoiceAmount": 1200.0,
+    "status": "PAID",
+    "issueDate": "2026-06-10",
+    "installmentsNumber": 1,
+}
+BUDGET = {
+    "id": 1,
+    "buildingId": 202,
+    "buildingName": "BRAVA GREEN - OBRA",
+    "description": "LIGACOES DEFINITIVAS",
+    "workItemId": 5001,
+    "quantity": 100.0,
+    "measuredQuantity": 130.0,
+    "unitPrice": 90.0,
+    "totalPrice": 9000.0,
+    "unitOfMeasure": "m3",
+}
 
 
 def test_creditor():
@@ -58,19 +97,50 @@ def test_bill():
 QUOTATION = {
     "purchaseQuotationId": 555,
     "responseDeadline": "2026-06-01",
-    "purchaseQuotationItems": [{"purchaseQuotationItemId": 1, "productId": 7975,
-                               "productDescription": "VERGALHAO 10MM"}],
+    "purchaseQuotationItems": [
+        {"purchaseQuotationItemId": 1, "productId": 7975, "productDescription": "VERGALHAO 10MM"}
+    ],
     "purchaseQuotationSuppliers": [
-        {"supplierId": 1768, "negotiations": [
-            {"negotiationId": 1, "sellersName": "Amaral", "totalValue": 123390.0,
-             "expirationDate": None, "negotiationItems": [
-                 {"purchaseQuotationItemId": 1, "productId": 7975, "quotedQuantity": 450.0,
-                  "negotiatedQuantity": 200.0, "unitPrice": 274.2, "selectedOption": False}]}]},
-        {"supplierId": 1900, "negotiations": [
-            {"negotiationId": 2, "sellersName": "Casas", "totalValue": 100000.0,
-             "expirationDate": "2026-06-15", "negotiationItems": [
-                 {"productId": 7975, "negotiatedQuantity": 200.0, "unitPrice": 260.0,
-                  "selectedOption": True}]}]},
+        {
+            "supplierId": 1768,
+            "negotiations": [
+                {
+                    "negotiationId": 1,
+                    "sellersName": "Amaral",
+                    "totalValue": 123390.0,
+                    "expirationDate": None,
+                    "negotiationItems": [
+                        {
+                            "purchaseQuotationItemId": 1,
+                            "productId": 7975,
+                            "quotedQuantity": 450.0,
+                            "negotiatedQuantity": 200.0,
+                            "unitPrice": 274.2,
+                            "selectedOption": False,
+                        }
+                    ],
+                }
+            ],
+        },
+        {
+            "supplierId": 1900,
+            "negotiations": [
+                {
+                    "negotiationId": 2,
+                    "sellersName": "Casas",
+                    "totalValue": 100000.0,
+                    "expirationDate": "2026-06-15",
+                    "negotiationItems": [
+                        {
+                            "productId": 7975,
+                            "negotiatedQuantity": 200.0,
+                            "unitPrice": 260.0,
+                            "selectedOption": True,
+                        }
+                    ],
+                }
+            ],
+        },
     ],
 }
 
@@ -87,10 +157,22 @@ def test_quotation_decompose():
     assert by_sup["1900"]["raw_description"] == "VERGALHAO 10MM"
 
 
-INVOICE = {"sequentialNumber": 12345, "companyId": 1, "number": "987", "series": "1",
-           "issueDate": "2026-06-11", "supplierId": 1768, "billId": 44027,
-           "productsAmount": 1000.0, "itemsTotalAmount": 1050.0, "eletronicInvoiceAmount": 1050.0,
-           "eletronicInvoiceId": "NFE123", "ipiTax": 50.0, "icmsStTax": 0.0, "consistency": "N"}
+INVOICE = {
+    "sequentialNumber": 12345,
+    "companyId": 1,
+    "number": "987",
+    "series": "1",
+    "issueDate": "2026-06-11",
+    "supplierId": 1768,
+    "billId": 44027,
+    "productsAmount": 1000.0,
+    "itemsTotalAmount": 1050.0,
+    "eletronicInvoiceAmount": 1050.0,
+    "eletronicInvoiceId": "NFE123",
+    "ipiTax": 50.0,
+    "icmsStTax": 0.0,
+    "consistency": "N",
+}
 
 
 def test_invoice():

@@ -13,10 +13,10 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.calibration.service import get_factors
 from app.core.logging import get_logger
 from app.core.timeutils import now_utc
 from app.models.findings import Finding, FindingEvidence, FindingStatus, RuleConfig
-from app.calibration.service import get_factors
 from app.rules.base import FindingDraft, Rule, RuleContext, registry
 from app.rules.confidence import score as confidence_score
 
@@ -43,7 +43,9 @@ def resolve_config(session: Session, rule: Rule) -> tuple[dict, bool]:
     return params, True
 
 
-def _replace_evidence(session: Session, tenant_id: str, finding: Finding, draft: FindingDraft) -> None:
+def _replace_evidence(
+    session: Session, tenant_id: str, finding: Finding, draft: FindingDraft
+) -> None:
     session.query(FindingEvidence).filter(FindingEvidence.finding_id == finding.id).delete()
     for ev in draft.evidence:
         session.add(

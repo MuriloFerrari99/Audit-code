@@ -9,6 +9,7 @@ A 1ª auditoria roda em thread (worker/fila entram depois). Read-only no Sienge.
 
 from __future__ import annotations
 
+import contextlib
 import threading
 
 import httpx
@@ -31,7 +32,10 @@ def probe_sienge(subdomain: str, user: str, password: str) -> dict:
             if r.status_code == 401:
                 return {"ok": False, "reason": "Usuário ou senha de API inválidos (401)."}
             if r.status_code == 404:
-                return {"ok": False, "reason": "Subdomínio não encontrado (404). Confira o endereço."}
+                return {
+                    "ok": False,
+                    "reason": "Subdomínio não encontrado (404). Confira o endereço.",
+                }
             r.raise_for_status()
             creditors = r.json().get("resultSetMetadata", {}).get("count")
             ro = c.get(f"{base}/purchase-orders", params={"limit": 1})
@@ -63,24 +67,33 @@ def _run(tenant_id: str, max_orders: int) -> None:
     from app.rules.integrity_rules import register_integrity_rules
     from app.rules.payment_rules import register_payment_rules
 
-    for reg in (register_builtin_rules, register_integrity_rules, register_fiscal_rules,
-                register_payment_rules):
-        try:
+    for reg in (
+        register_builtin_rules,
+        register_integrity_rules,
+        register_fiscal_rules,
+        register_payment_rules,
+    ):
+        with contextlib.suppress(ValueError):
             reg()
-        except ValueError:
-            pass
     try:
         _STATUS[tenant_id] = {"state": "carregando", "step": "lendo dados do Sienge"}
         connector = SiengeConnector(tenant_id, get_secret_provider(), use_fixtures=False)
         summary = load_canonical(connector, tenant_id, max_orders=max_orders)
-        _STATUS[tenant_id] = {"state": "verificando", "step": "checando integridade dos fornecedores"}
+        _STATUS[tenant_id] = {
+            "state": "verificando",
+            "step": "checando integridade dos fornecedores",
+        }
         with tenant_session(tenant_id) as s:
             refresh_for_tenant(s, tenant_id, limit=50)
         _STATUS[tenant_id] = {"state": "auditando", "step": "rodando regras", "loaded": summary}
         with tenant_session(tenant_id) as s:
             found = run_all(s, tenant_id)
-        _STATUS[tenant_id] = {"state": "pronto", "loaded": summary, "found": found,
-                              "total_findings": sum(found.values())}
+        _STATUS[tenant_id] = {
+            "state": "pronto",
+            "loaded": summary,
+            "found": found,
+            "total_findings": sum(found.values()),
+        }
         log.info("onboarding.run.done", tenant_id=tenant_id, found=found)
     except Exception as e:  # nunca falhar em silêncio
         log.error("onboarding.run.error", tenant_id=tenant_id, error=str(e))

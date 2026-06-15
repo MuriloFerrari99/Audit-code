@@ -15,8 +15,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.catalog import CatalogItem, SinapiReference
-from app.rules.classify import DISPERSION_MAX
 from app.models.sourcing import PurchaseOrderItem
+from app.rules.classify import DISPERSION_MAX
 
 
 @dataclass
@@ -26,7 +26,9 @@ class PriceReference:
     snapshot: dict
 
 
-def _sinapi_reference(session: Session, sinapi_code: str, state: str | None) -> PriceReference | None:
+def _sinapi_reference(
+    session: Session, sinapi_code: str, state: str | None
+) -> PriceReference | None:
     stmt = select(SinapiReference).where(SinapiReference.sinapi_code == sinapi_code)
     if state:
         stmt = stmt.where(SinapiReference.state == state)
@@ -104,9 +106,15 @@ def _internal_median_by_resource(session: Session, resource_code: str) -> PriceR
     return PriceReference(
         value=Decimal(str(median)),
         layer="internal_median_resource",
-        snapshot={"layer": "camada_0_interno", "source": "mediana_resource_code",
-                  "resource_code": resource_code, "n": int(n), "value": str(median),
-                  "min": str(lo), "max": str(hi)},
+        snapshot={
+            "layer": "camada_0_interno",
+            "source": "mediana_resource_code",
+            "resource_code": resource_code,
+            "n": int(n),
+            "value": str(median),
+            "min": str(lo),
+            "max": str(hi),
+        },
     )
 
 

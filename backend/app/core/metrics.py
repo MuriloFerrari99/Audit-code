@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from prometheus_client import Counter, Histogram
 
-rule_runs_total = Counter(
-    "audit_rule_runs_total", "Execuções do motor de regras", ["tenant"]
-)
+rule_runs_total = Counter("audit_rule_runs_total", "Execuções do motor de regras", ["tenant"])
 findings_emitted_total = Counter(
     "audit_findings_emitted_total", "Achados emitidos por regra", ["rule_id"]
 )

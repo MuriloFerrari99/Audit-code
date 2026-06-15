@@ -8,7 +8,7 @@ risco), para priorização — não é "perda".
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -36,9 +36,7 @@ def _creditors_with_cnpj(session: Session) -> list[Creditor]:
 def _counterparties(session: Session, cnpjs: list[str]) -> dict[str, Counterparty]:
     if not cnpjs:
         return {}
-    rows = session.execute(
-        select(Counterparty).where(Counterparty.cnpj.in_(cnpjs))
-    ).scalars()
+    rows = session.execute(select(Counterparty).where(Counterparty.cnpj.in_(cnpjs))).scalars()
     return {c.cnpj: c for c in rows}
 
 
@@ -72,19 +70,26 @@ class SanctionedSupplierRule:
             cp = cps.get(only_digits(c.cnpj_cpf))
             if cp is None or not cp.sancoes:  # None/[] => não sancionado/não verificado
                 continue
-            tipos = ", ".join(
-                f"{s.get('fonte')}:{s.get('tipo') or '?'}" for s in cp.sancoes[:3]
+            tipos = ", ".join(f"{s.get('fonte')}:{s.get('tipo') or '?'}" for s in cp.sancoes[:3])
+            drafts.append(
+                FindingDraft(
+                    rule_id=self.id,
+                    rule_version=self.version,
+                    dedup_key=dedup_key(self.id, c.id),
+                    severity=self.severity_default.value,
+                    exposed_amount=Money.of(spend.get(str(c.id), D(0))),
+                    title=f"Fornecedor com sanção ({tipos}): {c.name}",
+                    evidence=[
+                        EvidenceDraft(
+                            "counterparty",
+                            "sancao",
+                            cp.cnpj,
+                            f"{c.name} — sanções: {cp.sancoes} (fonte {cp.source}, {cp.checked_at})",
+                        )
+                    ],
+                    reference_snapshot=_source_snap(cp),
+                )
             )
-            drafts.append(FindingDraft(
-                rule_id=self.id, rule_version=self.version,
-                dedup_key=dedup_key(self.id, c.id),
-                severity=self.severity_default.value,
-                exposed_amount=Money.of(spend.get(str(c.id), D(0))),
-                title=f"Fornecedor com sanção ({tipos}): {c.name}",
-                evidence=[EvidenceDraft("counterparty", "sancao", cp.cnpj,
-                                        f"{c.name} — sanções: {cp.sancoes} (fonte {cp.source}, {cp.checked_at})")],
-                reference_snapshot=_source_snap(cp),
-            ))
         return drafts
 
 
@@ -109,16 +114,25 @@ class CnpjNotActiveRule:
             if sit in ("ATIVA", "NAO_ENCONTRADO"):
                 continue
             exposed = spend.get(str(c.id), D(0))
-            drafts.append(FindingDraft(
-                rule_id=self.id, rule_version=self.version,
-                dedup_key=dedup_key(self.id, c.id),
-                severity=self.severity_default.value,
-                exposed_amount=Money.of(exposed),
-                title=f"Fornecedor com CNPJ {sit}: {c.name}",
-                evidence=[EvidenceDraft("counterparty", "situacao_cadastral", cp.cnpj,
-                                        f"{c.name} — situação {sit} (fonte {cp.source}, {cp.checked_at})")],
-                reference_snapshot=_source_snap(cp),
-            ))
+            drafts.append(
+                FindingDraft(
+                    rule_id=self.id,
+                    rule_version=self.version,
+                    dedup_key=dedup_key(self.id, c.id),
+                    severity=self.severity_default.value,
+                    exposed_amount=Money.of(exposed),
+                    title=f"Fornecedor com CNPJ {sit}: {c.name}",
+                    evidence=[
+                        EvidenceDraft(
+                            "counterparty",
+                            "situacao_cadastral",
+                            cp.cnpj,
+                            f"{c.name} — situação {sit} (fonte {cp.source}, {cp.checked_at})",
+                        )
+                    ],
+                    reference_snapshot=_source_snap(cp),
+                )
+            )
         return drafts
 
 
@@ -133,7 +147,7 @@ class RecentHighValueSupplierRule:
     def evaluate(self, session: Session, ctx: RuleContext) -> list[FindingDraft]:
         months = int(ctx.params.get("max_age_months", 12))
         min_spend = D(str(ctx.params.get("min_spend", 50000)))
-        cutoff = now_utc().replace(tzinfo=timezone.utc).timestamp() - months * 30 * 86400
+        cutoff = now_utc().replace(tzinfo=UTC).timestamp() - months * 30 * 86400
         drafts: list[FindingDraft] = []
         creditors = _creditors_with_cnpj(session)
         cps = _counterparties(session, [only_digits(c.cnpj_cpf) for c in creditors])
@@ -143,22 +157,31 @@ class RecentHighValueSupplierRule:
             if cp is None or cp.status != "ok" or not cp.data_abertura:
                 continue
             try:
-                opened = datetime.fromisoformat(cp.data_abertura).replace(tzinfo=timezone.utc).timestamp()
+                opened = datetime.fromisoformat(cp.data_abertura).replace(tzinfo=UTC).timestamp()
             except ValueError:
                 continue
             total = spend.get(str(c.id), D(0))
             if opened >= cutoff and total > min_spend:
-                drafts.append(FindingDraft(
-                    rule_id=self.id, rule_version=self.version,
-                    dedup_key=dedup_key(self.id, c.id),
-                    severity=self.severity_default.value,
-                    exposed_amount=Money.of(total),
-                    title=f"Empresa recém-aberta de alto valor: {c.name} (desde {cp.data_abertura})",
-                    evidence=[EvidenceDraft("counterparty", "data_abertura", cp.cnpj,
-                                            f"{c.name} aberta em {cp.data_abertura}; comprado {total}")],
-                    reference_snapshot=_source_snap(cp),
-                    config_snapshot={"max_age_months": months, "min_spend": str(min_spend)},
-                ))
+                drafts.append(
+                    FindingDraft(
+                        rule_id=self.id,
+                        rule_version=self.version,
+                        dedup_key=dedup_key(self.id, c.id),
+                        severity=self.severity_default.value,
+                        exposed_amount=Money.of(total),
+                        title=f"Empresa recém-aberta de alto valor: {c.name} (desde {cp.data_abertura})",
+                        evidence=[
+                            EvidenceDraft(
+                                "counterparty",
+                                "data_abertura",
+                                cp.cnpj,
+                                f"{c.name} aberta em {cp.data_abertura}; comprado {total}",
+                            )
+                        ],
+                        reference_snapshot=_source_snap(cp),
+                        config_snapshot={"max_age_months": months, "min_spend": str(min_spend)},
+                    )
+                )
         return drafts
 
 
@@ -197,14 +220,25 @@ class CommonPartnerRule:
                 continue
             seen.add(ddk)
             names = ", ".join(c.name for c in uniq.values())
-            drafts.append(FindingDraft(
-                rule_id=self.id, rule_version=self.version, dedup_key=ddk,
-                severity=self.severity_default.value, exposed_amount=None,
-                title=f"Sócio em comum entre fornecedores: {names}",
-                evidence=[EvidenceDraft("counterparty", "socio_comum", None,
-                                        f"sócio em comum ({key}) entre: {names}")],
-                reference_snapshot={"source": "brasilapi"},
-            ))
+            drafts.append(
+                FindingDraft(
+                    rule_id=self.id,
+                    rule_version=self.version,
+                    dedup_key=ddk,
+                    severity=self.severity_default.value,
+                    exposed_amount=None,
+                    title=f"Sócio em comum entre fornecedores: {names}",
+                    evidence=[
+                        EvidenceDraft(
+                            "counterparty",
+                            "socio_comum",
+                            None,
+                            f"sócio em comum ({key}) entre: {names}",
+                        )
+                    ],
+                    reference_snapshot={"source": "brasilapi"},
+                )
+            )
         return drafts
 
 
@@ -226,21 +260,37 @@ class UnverifiedSupplierRule:
             if cp is not None and cp.status == "ok":
                 continue  # verificado
             reason = "fonte indisponível" if cp else "ainda não consultado"
-            drafts.append(FindingDraft(
-                rule_id=self.id, rule_version=self.version,
-                dedup_key=dedup_key(self.id, c.id),
-                severity=self.severity_default.value,
-                exposed_amount=Money.of(spend.get(str(c.id), D(0))),
-                title=f"Fornecedor não verificado: {c.name}",
-                evidence=[EvidenceDraft("creditor", "nao_verificado", str(c.id),
-                                        f"{c.name}: integridade não confirmada ({reason}). NÃO assumir idôneo.")],
-                reference_snapshot={"source": "integrity", "status": cp.status if cp else "ausente"},
-            ))
+            drafts.append(
+                FindingDraft(
+                    rule_id=self.id,
+                    rule_version=self.version,
+                    dedup_key=dedup_key(self.id, c.id),
+                    severity=self.severity_default.value,
+                    exposed_amount=Money.of(spend.get(str(c.id), D(0))),
+                    title=f"Fornecedor não verificado: {c.name}",
+                    evidence=[
+                        EvidenceDraft(
+                            "creditor",
+                            "nao_verificado",
+                            str(c.id),
+                            f"{c.name}: integridade não confirmada ({reason}). NÃO assumir idôneo.",
+                        )
+                    ],
+                    reference_snapshot={
+                        "source": "integrity",
+                        "status": cp.status if cp else "ausente",
+                    },
+                )
+            )
         return drafts
 
 
 def register_integrity_rules() -> None:
-    for rule in (SanctionedSupplierRule(), CnpjNotActiveRule(),
-                 RecentHighValueSupplierRule(), CommonPartnerRule(),
-                 UnverifiedSupplierRule()):
+    for rule in (
+        SanctionedSupplierRule(),
+        CnpjNotActiveRule(),
+        RecentHighValueSupplierRule(),
+        CommonPartnerRule(),
+        UnverifiedSupplierRule(),
+    ):
         register(rule)

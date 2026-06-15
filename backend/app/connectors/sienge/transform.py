@@ -76,17 +76,19 @@ def to_quotation_rows(p: dict) -> list[dict]:
                 pid = _s(ni.get("productId"))
                 if pid is None or ni.get("unitPrice") is None:
                     continue
-                rows.append({
-                    "source_external_id": f"{q_ext}:{sup_ext}:{pid}",
-                    "quotation_ext": q_ext,
-                    "supplier_ext": sup_ext,
-                    "resource_code": pid,
-                    "unit_price": ni.get("unitPrice"),
-                    "qty": ni.get("negotiatedQuantity") or ni.get("quotedQuantity"),
-                    "valid_until": valid,
-                    "raw_description": desc.get(pid) or "(cotação)",
-                    "selected": ni.get("selectedOption"),
-                })
+                rows.append(
+                    {
+                        "source_external_id": f"{q_ext}:{sup_ext}:{pid}",
+                        "quotation_ext": q_ext,
+                        "supplier_ext": sup_ext,
+                        "resource_code": pid,
+                        "unit_price": ni.get("unitPrice"),
+                        "qty": ni.get("negotiatedQuantity") or ni.get("quotedQuantity"),
+                        "valid_until": valid,
+                        "raw_description": desc.get(pid) or "(cotação)",
+                        "selected": ni.get("selectedOption"),
+                    }
+                )
     return rows
 
 

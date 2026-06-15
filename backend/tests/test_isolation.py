@@ -55,9 +55,8 @@ def test_tenant_reads_only_its_own_rows(two_tenants):
 def test_cannot_insert_for_another_tenant(two_tenants):
     a, b = two_tenants
     # Em sessão do tenant A, tentar inserir linha do tenant B deve violar o WITH CHECK.
-    with pytest.raises((DBAPIError, ProgrammingError)):
-        with tenant_session(str(a)) as s:
-            _insert_company(s, b, "Empresa intrusa")
+    with pytest.raises((DBAPIError, ProgrammingError)), tenant_session(str(a)) as s:
+        _insert_company(s, b, "Empresa intrusa")
 
 
 def test_no_tenant_context_sees_nothing(two_tenants):

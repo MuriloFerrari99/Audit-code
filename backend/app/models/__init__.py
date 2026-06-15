@@ -5,7 +5,6 @@ tabelas e que TENANT_SCOPED seja populado antes das migrações.
 from app.models.auth import Membership, Role, User
 from app.models.base import TENANT_SCOPED, Base
 from app.models.catalog import CatalogItem, ItemMapping, SinapiReference
-from app.models.integrity import Counterparty
 from app.models.findings import (
     AuditLog,
     Finding,
@@ -17,6 +16,7 @@ from app.models.findings import (
     Severity,
     ValueLedger,
 )
+from app.models.integrity import Counterparty
 from app.models.platform import DeadLetter, EntityHistory, OutboxEvent, RawRecord, TenantSecret
 from app.models.sourcing import (
     Bill,

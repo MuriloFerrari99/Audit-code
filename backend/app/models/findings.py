@@ -19,7 +19,7 @@ from app.models.base import TENANT_SCOPED, Base, TenantScopedMixin, TimestampMix
 MONEY = Numeric(18, 4)
 
 
-class FindingStatus(str, enum.Enum):
+class FindingStatus(enum.StrEnum):
     OPEN = "open"
     ACCEPTED = "accepted"
     DISMISSED = "dismissed"
@@ -28,7 +28,7 @@ class FindingStatus(str, enum.Enum):
     SUPERSEDED = "superseded"  # recalculado por nova versão de regra
 
 
-class Severity(str, enum.Enum):
+class Severity(enum.StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -38,12 +38,16 @@ class Severity(str, enum.Enum):
 class Finding(Base, TenantScopedMixin):
     __tablename__ = "finding"
 
-    project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
     rule_id: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     rule_version: Mapped[int] = mapped_column(default=1, nullable=False)
     dedup_key: Mapped[str] = mapped_column(String(80), nullable=False)  # ADR-03
     severity: Mapped[str] = mapped_column(String(10), default=Severity.MEDIUM.value, nullable=False)
-    status: Mapped[str] = mapped_column(String(12), default=FindingStatus.OPEN.value, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(12), default=FindingStatus.OPEN.value, nullable=False
+    )
     exposed_amount: Mapped[float | None] = mapped_column(MONEY, nullable=True)
     # Score de confiança (Módulo B): baixo -> "a investigar", não vai p/ cliente.
     confidence: Mapped[float | None] = mapped_column(Numeric(4, 3), nullable=True)
@@ -114,12 +118,16 @@ class ValueLedger(Base, TenantScopedMixin):
     __tablename__ = "value_ledger"
 
     project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    finding_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    finding_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
     exposed_amount: Mapped[float | None] = mapped_column(MONEY, nullable=True)
     validated_amount: Mapped[float | None] = mapped_column(MONEY, nullable=True)
     realized_amount: Mapped[float | None] = mapped_column(MONEY, nullable=True)
     period: Mapped[str | None] = mapped_column(String(7), nullable=True)  # YYYY-MM
-    entry_type: Mapped[str] = mapped_column(String(16), default="accrual", nullable=False)  # accrual|true_up
+    entry_type: Mapped[str] = mapped_column(
+        String(16), default="accrual", nullable=False
+    )  # accrual|true_up
     baseline_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="open", nullable=False)
 
@@ -130,7 +138,9 @@ class AuditLog(Base, TimestampMixin):
     __tablename__ = "audit_log"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
-    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
     actor: Mapped[str] = mapped_column(String(20), nullable=False)  # user|system|agent
     actor_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     action: Mapped[str] = mapped_column(String(60), nullable=False)

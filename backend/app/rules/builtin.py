@@ -20,8 +20,8 @@ from sqlalchemy.orm import Session
 from app.core.money import Money
 from app.models.findings import Severity
 from app.models.sourcing import (
-    BudgetItem,
     Bill,
+    BudgetItem,
     PurchaseOrder,
     PurchaseOrderItem,
     Quotation,
@@ -92,10 +92,15 @@ class OverpriceRule:
                     title=f"Sobrepreço: pago {unit_price} vs referência {ref.value}",
                     project_id=str(order.project_id) if order.project_id else None,
                     evidence=[
-                        EvidenceDraft("purchase_order_item", "item_pedido", str(item.id),
-                                      f"{item.raw_description}: {unit_price}/un x {qty}"),
-                        EvidenceDraft("reference", ref.layer, None,
-                                      f"referência {ref.value}", ref.snapshot),
+                        EvidenceDraft(
+                            "purchase_order_item",
+                            "item_pedido",
+                            str(item.id),
+                            f"{item.raw_description}: {unit_price}/un x {qty}",
+                        ),
+                        EvidenceDraft(
+                            "reference", ref.layer, None, f"referência {ref.value}", ref.snapshot
+                        ),
                     ],
                     reference_snapshot=ref.snapshot,
                     config_snapshot={"threshold_pct": str(threshold)},
@@ -149,7 +154,11 @@ class LostQuoteRule:
             ).scalar_one_or_none()
             if q is None:
                 continue
-            if q.valid_until is not None and order.ordered_at is not None and q.valid_until < order.ordered_at:
+            if (
+                q.valid_until is not None
+                and order.ordered_at is not None
+                and q.valid_until < order.ordered_at
+            ):
                 continue  # cotação expirada na data do pedido
             best = D(str(q.unit_price))
             if unit_price / best > D(str(RATIO_MAX)):
@@ -166,10 +175,18 @@ class LostQuoteRule:
                     title=f"Cotação perdida: comprou {unit_price} havendo {best}",
                     project_id=str(order.project_id) if order.project_id else None,
                     evidence=[
-                        EvidenceDraft("purchase_order_item", "item_pedido", str(item.id),
-                                      f"{item.raw_description}: {unit_price}/un"),
-                        EvidenceDraft("quotation", "cotacao_mais_barata", str(q.id),
-                                      f"cotação {best}/un, validade {q.valid_until}"),
+                        EvidenceDraft(
+                            "purchase_order_item",
+                            "item_pedido",
+                            str(item.id),
+                            f"{item.raw_description}: {unit_price}/un",
+                        ),
+                        EvidenceDraft(
+                            "quotation",
+                            "cotacao_mais_barata",
+                            str(q.id),
+                            f"cotação {best}/un, validade {q.valid_until}",
+                        ),
                     ],
                     config_snapshot={},
                 )
@@ -195,11 +212,13 @@ class SplittingRule:
 
         orders = list(
             session.execute(
-                select(PurchaseOrder).where(
+                select(PurchaseOrder)
+                .where(
                     PurchaseOrder.total.is_not(None),
                     PurchaseOrder.creditor_id.is_not(None),
                     PurchaseOrder.ordered_at.is_not(None),
-                ).order_by(PurchaseOrder.creditor_id, PurchaseOrder.ordered_at)
+                )
+                .order_by(PurchaseOrder.creditor_id, PurchaseOrder.ordered_at)
             ).scalars()
         )
         by_creditor: dict[str, list[PurchaseOrder]] = {}
@@ -210,7 +229,8 @@ class SplittingRule:
             # janela deslizante: pedidos "logo abaixo" da alçada em <= window dias
             for i, anchor in enumerate(group):
                 cluster = [
-                    o for o in group[i:]
+                    o
+                    for o in group[i:]
                     if o.ordered_at - anchor.ordered_at <= timedelta(days=window)
                     and lower <= D(str(o.total)) <= alcada
                 ]
@@ -229,12 +249,19 @@ class SplittingRule:
                         title=f"Fracionamento: {len(cluster)} pedidos somam {total} (alçada {alcada})",
                         project_id=str(anchor.project_id) if anchor.project_id else None,
                         evidence=[
-                            EvidenceDraft("purchase_order", "pedido_fracionado", str(o.id),
-                                          f"pedido {o.total} em {o.ordered_at.date()}")
+                            EvidenceDraft(
+                                "purchase_order",
+                                "pedido_fracionado",
+                                str(o.id),
+                                f"pedido {o.total} em {o.ordered_at.date()}",
+                            )
                             for o in cluster
                         ],
-                        config_snapshot={"window_days": window, "alcada": str(alcada),
-                                         "below_pct": str(below)},
+                        config_snapshot={
+                            "window_days": window,
+                            "alcada": str(alcada),
+                            "below_pct": str(below),
+                        },
                     )
                 )
                 break  # um achado por credor por âncora
@@ -278,8 +305,12 @@ class QuantityOverrunRule:
                     title=f"Estouro de quantidade: medido {measured} vs orçado {budgeted}",
                     project_id=str(b.project_id) if b.project_id else None,
                     evidence=[
-                        EvidenceDraft("budget_item", "orcamento", str(b.id),
-                                      f"{b.raw_description}: orçado {budgeted} {b.unit}, medido {measured}"),
+                        EvidenceDraft(
+                            "budget_item",
+                            "orcamento",
+                            str(b.id),
+                            f"{b.raw_description}: orçado {budgeted} {b.unit}, medido {measured}",
+                        ),
                     ],
                     config_snapshot={"tolerance_pct": str(tol)},
                 )
@@ -342,12 +373,18 @@ class NoCompetitionRule:
         min_quotes = int(ctx.params.get("min_quotes", 2))
         drafts: list[FindingDraft] = []
         orders = session.execute(
-            select(PurchaseOrder).where(PurchaseOrder.total.is_not(None), PurchaseOrder.total > relevance)
+            select(PurchaseOrder).where(
+                PurchaseOrder.total.is_not(None), PurchaseOrder.total > relevance
+            )
         ).scalars()
         for order in orders:
-            order_items = session.execute(
-                select(PurchaseOrderItem).where(PurchaseOrderItem.order_id == order.id)
-            ).scalars().all()
+            order_items = (
+                session.execute(
+                    select(PurchaseOrderItem).where(PurchaseOrderItem.order_id == order.id)
+                )
+                .scalars()
+                .all()
+            )
             # só insumos de material: serviço/mão de obra/empreitada não passam
             # por cotação, não são "sem concorrência" (A-1).
             material = [it for it in order_items if not is_non_material(it.raw_description)]
@@ -377,8 +414,12 @@ class NoCompetitionRule:
                     title=f"Sem concorrência: pedido {order.total} com {distinct_creditors} cotação(ões)",
                     project_id=str(order.project_id) if order.project_id else None,
                     evidence=[
-                        EvidenceDraft("purchase_order", "pedido_sem_concorrencia", str(order.id),
-                                      f"pedido {order.total}, {distinct_creditors} fornecedor(es) cotando"),
+                        EvidenceDraft(
+                            "purchase_order",
+                            "pedido_sem_concorrencia",
+                            str(order.id),
+                            f"pedido {order.total}, {distinct_creditors} fornecedor(es) cotando",
+                        ),
                     ],
                     config_snapshot={"relevance": str(relevance), "min_quotes": min_quotes},
                 )

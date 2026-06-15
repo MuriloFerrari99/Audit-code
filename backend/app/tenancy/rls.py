@@ -23,8 +23,7 @@ def enable_rls_statements(table: str) -> list[str]:
         f"DROP POLICY IF EXISTS {policy} ON {table};",
         # SELECT/UPDATE/DELETE: só linhas do tenant atual.
         # INSERT: WITH CHECK garante que não se insere para outro tenant.
-        f"CREATE POLICY {policy} ON {table} "
-        f"USING ({expr}) WITH CHECK ({expr});",
+        f"CREATE POLICY {policy} ON {table} USING ({expr}) WITH CHECK ({expr});",
     ]
 
 

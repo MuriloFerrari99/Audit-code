@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Any, Protocol
 
 
-class EntityKind(str, enum.Enum):
+class EntityKind(enum.StrEnum):
     CREDITOR = "creditor"
     BUDGET_ITEM = "budget_item"
     QUOTATION = "quotation"

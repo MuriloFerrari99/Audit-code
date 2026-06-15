@@ -8,6 +8,7 @@ Uso: python -m scripts.sync_alumbra [max_orders]
 
 from __future__ import annotations
 
+import contextlib
 import sys
 
 from app.connectors.sienge.connector import SiengeConnector
@@ -33,12 +34,14 @@ def main() -> None:
     summary = load_canonical(connector, TENANT, max_orders=max_orders)
     print("      carga:", summary)
 
-    for reg in (register_builtin_rules, register_integrity_rules, register_fiscal_rules,
-                register_payment_rules):
-        try:
+    for reg in (
+        register_builtin_rules,
+        register_integrity_rules,
+        register_fiscal_rules,
+        register_payment_rules,
+    ):
+        with contextlib.suppress(ValueError):
             reg()
-        except ValueError:
-            pass
 
     print("[2/4] checando integridade dos fornecedores (Receita/BrasilAPI)...")
     with tenant_session(TENANT) as s:

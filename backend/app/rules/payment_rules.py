@@ -34,27 +34,46 @@ class DuplicatePaymentRule:
         drafts: list[FindingDraft] = []
         rows = session.execute(
             select(
-                Bill.creditor_id, Bill.document_number, Bill.document_identification,
-                Bill.amount, func.count(), func.array_agg(Bill.source_external_id),
+                Bill.creditor_id,
+                Bill.document_number,
+                Bill.document_identification,
+                Bill.amount,
+                func.count(),
+                func.array_agg(Bill.source_external_id),
             )
-            .where(Bill.document_number.is_not(None), Bill.amount.is_not(None),
-                   Bill.amount >= floor, Bill.creditor_id.is_not(None))
-            .group_by(Bill.creditor_id, Bill.document_number, Bill.document_identification, Bill.amount)
+            .where(
+                Bill.document_number.is_not(None),
+                Bill.amount.is_not(None),
+                Bill.amount >= floor,
+                Bill.creditor_id.is_not(None),
+            )
+            .group_by(
+                Bill.creditor_id, Bill.document_number, Bill.document_identification, Bill.amount
+            )
             .having(func.count() > 1)
         ).all()
         for creditor_id, doc, ident, amount, n, ext_ids in rows:
             amt = D(str(amount))
             exposed = amt * (n - 1)  # as vias extras
-            drafts.append(FindingDraft(
-                rule_id=self.id, rule_version=self.version,
-                dedup_key=dedup_key(self.id, creditor_id, doc, ident, str(amount)),
-                severity=self.severity_default.value,
-                exposed_amount=Money.of(exposed),
-                title=f"Pagamento possivelmente duplicado: doc {doc} x{n} ({amt} cada)",
-                evidence=[EvidenceDraft("bill", "titulos_duplicados", None,
-                                        f"{n} títulos {doc}/{ident} de {amt} (ids {ext_ids})")],
-                config_snapshot={"min_amount": str(floor)},
-            ))
+            drafts.append(
+                FindingDraft(
+                    rule_id=self.id,
+                    rule_version=self.version,
+                    dedup_key=dedup_key(self.id, creditor_id, doc, ident, str(amount)),
+                    severity=self.severity_default.value,
+                    exposed_amount=Money.of(exposed),
+                    title=f"Pagamento possivelmente duplicado: doc {doc} x{n} ({amt} cada)",
+                    evidence=[
+                        EvidenceDraft(
+                            "bill",
+                            "titulos_duplicados",
+                            None,
+                            f"{n} títulos {doc}/{ident} de {amt} (ids {ext_ids})",
+                        )
+                    ],
+                    config_snapshot={"min_amount": str(floor)},
+                )
+            )
         return drafts
 
 
@@ -72,22 +91,32 @@ class PaymentWithoutBackingRule:
         bills = session.execute(
             select(Bill).where(
                 Bill.order_id.is_(None),
-                Bill.amount.is_not(None), Bill.amount >= floor,
+                Bill.amount.is_not(None),
+                Bill.amount >= floor,
                 Bill.source_external_id.not_in(with_invoice),
             )
         ).scalars()
         drafts: list[FindingDraft] = []
         for b in bills:
-            drafts.append(FindingDraft(
-                rule_id=self.id, rule_version=self.version,
-                dedup_key=dedup_key(self.id, b.id),
-                severity=self.severity_default.value,
-                exposed_amount=Money.of(D(str(b.amount))),
-                title=f"Pagamento sem lastro: título {b.document_number or b.source_external_id} {b.amount}",
-                evidence=[EvidenceDraft("bill", "sem_lastro", str(b.id),
-                                        f"título {b.amount} sem pedido nem nota vinculados")],
-                config_snapshot={"min_amount": str(floor)},
-            ))
+            drafts.append(
+                FindingDraft(
+                    rule_id=self.id,
+                    rule_version=self.version,
+                    dedup_key=dedup_key(self.id, b.id),
+                    severity=self.severity_default.value,
+                    exposed_amount=Money.of(D(str(b.amount))),
+                    title=f"Pagamento sem lastro: título {b.document_number or b.source_external_id} {b.amount}",
+                    evidence=[
+                        EvidenceDraft(
+                            "bill",
+                            "sem_lastro",
+                            str(b.id),
+                            f"título {b.amount} sem pedido nem nota vinculados",
+                        )
+                    ],
+                    config_snapshot={"min_amount": str(floor)},
+                )
+            )
         return drafts
 
 

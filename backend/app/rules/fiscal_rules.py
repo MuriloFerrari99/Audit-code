@@ -32,8 +32,9 @@ class InvoiceVsOrderRule:
         tol = D(str(ctx.params.get("tolerance_pct", 0.02)))
         drafts: list[FindingDraft] = []
         invs = session.execute(
-            select(Invoice).where(Invoice.order_id.is_not(None),
-                                  Invoice.total_invoiced.is_not(None))
+            select(Invoice).where(
+                Invoice.order_id.is_not(None), Invoice.total_invoiced.is_not(None)
+            )
         ).scalars()
         for inv in invs:
             order = session.get(PurchaseOrder, inv.order_id)
@@ -43,19 +44,24 @@ class InvoiceVsOrderRule:
             ped = D(str(order.total))
             if ped <= 0 or nota <= ped * (ONE + tol):
                 continue
-            drafts.append(FindingDraft(
-                rule_id=self.id, rule_version=self.version,
-                dedup_key=dedup_key(self.id, inv.id),
-                severity=self.severity_default.value,
-                exposed_amount=Money.of(nota - ped),
-                title=f"Nota acima do pedido: NF {inv.number} {nota} vs pedido {ped}",
-                project_id=str(order.project_id) if order.project_id else None,
-                evidence=[
-                    EvidenceDraft("purchase_order", "pedido", str(order.id), f"pedido {ped}"),
-                    EvidenceDraft("invoice", "nota", str(inv.id), f"NF {inv.number} valor {nota}"),
-                ],
-                config_snapshot={"tolerance_pct": str(tol)},
-            ))
+            drafts.append(
+                FindingDraft(
+                    rule_id=self.id,
+                    rule_version=self.version,
+                    dedup_key=dedup_key(self.id, inv.id),
+                    severity=self.severity_default.value,
+                    exposed_amount=Money.of(nota - ped),
+                    title=f"Nota acima do pedido: NF {inv.number} {nota} vs pedido {ped}",
+                    project_id=str(order.project_id) if order.project_id else None,
+                    evidence=[
+                        EvidenceDraft("purchase_order", "pedido", str(order.id), f"pedido {ped}"),
+                        EvidenceDraft(
+                            "invoice", "nota", str(inv.id), f"NF {inv.number} valor {nota}"
+                        ),
+                    ],
+                    config_snapshot={"tolerance_pct": str(tol)},
+                )
+            )
         return drafts
 
 
@@ -69,21 +75,28 @@ class InconsistentInvoiceRule:
 
     def evaluate(self, session: Session, ctx: RuleContext) -> list[FindingDraft]:
         drafts: list[FindingDraft] = []
-        invs = session.execute(
-            select(Invoice).where(Invoice.consistency == "N")
-        ).scalars()
+        invs = session.execute(select(Invoice).where(Invoice.consistency == "N")).scalars()
         for inv in invs:
             amount = D(str(inv.total_invoiced)) if inv.total_invoiced is not None else D(0)
-            drafts.append(FindingDraft(
-                rule_id=self.id, rule_version=self.version,
-                dedup_key=dedup_key(self.id, inv.id),
-                severity=self.severity_default.value,
-                exposed_amount=Money.of(amount),
-                title=f"Nota marcada como inconsistente: NF {inv.number}",
-                evidence=[EvidenceDraft("invoice", "nota_inconsistente", str(inv.id),
-                                        f"NF {inv.number} (consistency=N no Sienge), valor {amount}")],
-                reference_snapshot={"source": "sienge.consistency"},
-            ))
+            drafts.append(
+                FindingDraft(
+                    rule_id=self.id,
+                    rule_version=self.version,
+                    dedup_key=dedup_key(self.id, inv.id),
+                    severity=self.severity_default.value,
+                    exposed_amount=Money.of(amount),
+                    title=f"Nota marcada como inconsistente: NF {inv.number}",
+                    evidence=[
+                        EvidenceDraft(
+                            "invoice",
+                            "nota_inconsistente",
+                            str(inv.id),
+                            f"NF {inv.number} (consistency=N no Sienge), valor {amount}",
+                        )
+                    ],
+                    reference_snapshot={"source": "sienge.consistency"},
+                )
+            )
         return drafts
 
 
@@ -99,13 +112,15 @@ class InvoiceVsPaymentRule:
         tol = D(str(ctx.params.get("tolerance_pct", 0.02)))
         drafts: list[FindingDraft] = []
         invs = session.execute(
-            select(Invoice).where(Invoice.bill_external.is_not(None),
-                                  Invoice.total_invoiced.is_not(None))
+            select(Invoice).where(
+                Invoice.bill_external.is_not(None), Invoice.total_invoiced.is_not(None)
+            )
         ).scalars()
         for inv in invs:
             bill = session.execute(
-                select(Bill).where(Bill.source == "sienge",
-                                   Bill.source_external_id == inv.bill_external)
+                select(Bill).where(
+                    Bill.source == "sienge", Bill.source_external_id == inv.bill_external
+                )
             ).scalar_one_or_none()
             if bill is None or bill.amount is None:
                 continue
@@ -113,18 +128,21 @@ class InvoiceVsPaymentRule:
             pago = D(str(bill.amount))
             if nota <= 0 or pago <= nota * (ONE + tol):
                 continue
-            drafts.append(FindingDraft(
-                rule_id=self.id, rule_version=self.version,
-                dedup_key=dedup_key(self.id, inv.id),
-                severity=self.severity_default.value,
-                exposed_amount=Money.of(pago - nota),
-                title=f"Pagamento acima da nota: título {pago} vs NF {inv.number} {nota}",
-                evidence=[
-                    EvidenceDraft("invoice", "nota", str(inv.id), f"NF {inv.number} {nota}"),
-                    EvidenceDraft("bill", "pagamento", str(bill.id), f"título {pago}"),
-                ],
-                config_snapshot={"tolerance_pct": str(tol)},
-            ))
+            drafts.append(
+                FindingDraft(
+                    rule_id=self.id,
+                    rule_version=self.version,
+                    dedup_key=dedup_key(self.id, inv.id),
+                    severity=self.severity_default.value,
+                    exposed_amount=Money.of(pago - nota),
+                    title=f"Pagamento acima da nota: título {pago} vs NF {inv.number} {nota}",
+                    evidence=[
+                        EvidenceDraft("invoice", "nota", str(inv.id), f"NF {inv.number} {nota}"),
+                        EvidenceDraft("bill", "pagamento", str(bill.id), f"título {pago}"),
+                    ],
+                    config_snapshot={"tolerance_pct": str(tol)},
+                )
+            )
         return drafts
 
 

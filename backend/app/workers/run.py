@@ -7,6 +7,7 @@ nunca falha em silêncio (erros vão para log + dead_letter na carga).
 
 from __future__ import annotations
 
+import contextlib
 import os
 
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -39,12 +40,14 @@ def sync_active_tenants() -> None:
     from app.rules.integrity_rules import register_integrity_rules
     from app.rules.payment_rules import register_payment_rules
 
-    for reg in (register_builtin_rules, register_integrity_rules,
-                register_fiscal_rules, register_payment_rules):
-        try:
+    for reg in (
+        register_builtin_rules,
+        register_integrity_rules,
+        register_fiscal_rules,
+        register_payment_rules,
+    ):
+        with contextlib.suppress(ValueError):
             reg()
-        except ValueError:
-            pass
 
     tenants = _active_tenants_with_creds()
     log.info("worker.cycle.start", tenants=len(tenants))
@@ -65,8 +68,9 @@ def main() -> None:
     configure_logging()
     log.info("worker.start", interval_min=INTERVAL_MIN)
     scheduler = BlockingScheduler(timezone="UTC")
-    scheduler.add_job(sync_active_tenants, "interval", minutes=INTERVAL_MIN,
-                      next_run_time=None)  # primeira execução no próximo tick
+    scheduler.add_job(
+        sync_active_tenants, "interval", minutes=INTERVAL_MIN, next_run_time=None
+    )  # primeira execução no próximo tick
     scheduler.start()
 
 

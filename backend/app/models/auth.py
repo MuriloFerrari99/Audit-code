@@ -16,7 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base, TimestampMixin, _uuid
 
 
-class Role(str, enum.Enum):
+class Role(enum.StrEnum):
     OWNER = "owner"
     CONTROLLER = "controller"
     PROCUREMENT = "procurement"
@@ -47,5 +47,9 @@ class Membership(Base, TimestampMixin):
     )
     role: Mapped[str] = mapped_column(String(20), default=Role.VIEWER.value, nullable=False)
     # Escopo opcional (None = todas as empresas/obras do tenant):
-    company_ids: Mapped[list[uuid.UUID] | None] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=True)
-    project_ids: Mapped[list[uuid.UUID] | None] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=True)
+    company_ids: Mapped[list[uuid.UUID] | None] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), nullable=True
+    )
+    project_ids: Mapped[list[uuid.UUID] | None] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), nullable=True
+    )

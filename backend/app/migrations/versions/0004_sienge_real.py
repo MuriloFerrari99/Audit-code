@@ -21,7 +21,9 @@ def upgrade() -> None:
     op.create_index("ix_poi_resource_code", "purchase_order_item", ["resource_code"])
     op.add_column("budget_item", sa.Column("resource_code", sa.String(64), nullable=True))
     op.create_index("ix_budget_resource_code", "budget_item", ["resource_code"])
-    op.alter_column("project", "company_id", existing_type=sa.dialects.postgresql.UUID(), nullable=True)
+    op.alter_column(
+        "project", "company_id", existing_type=sa.dialects.postgresql.UUID(), nullable=True
+    )
     op.create_index("ix_project_external_code", "project", ["external_code"])
 
 
@@ -31,4 +33,6 @@ def downgrade() -> None:
     op.drop_index("ix_poi_resource_code", "purchase_order_item")
     op.drop_column("budget_item", "resource_code")
     op.drop_column("purchase_order_item", "resource_code")
-    op.alter_column("project", "company_id", existing_type=sa.dialects.postgresql.UUID(), nullable=False)
+    op.alter_column(
+        "project", "company_id", existing_type=sa.dialects.postgresql.UUID(), nullable=False
+    )

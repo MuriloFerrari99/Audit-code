@@ -42,14 +42,23 @@ class LLMClient:
                 self.enabled = False
 
     def _model(self, task: str) -> str:
-        return self._settings.llm_model_strong if task == "strong" else self._settings.llm_model_cheap
+        return (
+            self._settings.llm_model_strong if task == "strong" else self._settings.llm_model_cheap
+        )
 
     def _budget_ok(self, tenant_id: str, want: int) -> bool:
         spent = self._spent.get(tenant_id, 0)
         return spent + want <= self._settings.llm_tenant_token_budget
 
-    def complete(self, prompt: str, *, tenant_id: str, task: str = "cheap",
-                 max_tokens: int = 1024, system: str | None = None) -> str | None:
+    def complete(
+        self,
+        prompt: str,
+        *,
+        tenant_id: str,
+        task: str = "cheap",
+        max_tokens: int = 1024,
+        system: str | None = None,
+    ) -> str | None:
         """Retorna o texto do modelo, ou None se desabilitado/estourou orçamento
         (o chamador deve ter um fallback determinístico)."""
         if not self.enabled or self._client is None:
@@ -61,10 +70,15 @@ class LLMClient:
         resp = self._client.messages.create(
             model=self._model(task),
             max_tokens=max_tokens,
-            system=system or "Você é um analista de auditoria de gastos. Seja objetivo e cite a evidência. Você NÃO executa ações; apenas analisa e reporta.",
+            system=system
+            or "Você é um analista de auditoria de gastos. Seja objetivo e cite a evidência. Você NÃO executa ações; apenas analisa e reporta.",
             messages=[{"role": "user", "content": safe_prompt}],
         )
         usage = getattr(resp, "usage", None)
-        used = (getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0)) if usage else max_tokens
+        used = (
+            (getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0))
+            if usage
+            else max_tokens
+        )
         self._spent[tenant_id] = self._spent.get(tenant_id, 0) + used
         return "".join(block.text for block in resp.content if getattr(block, "type", "") == "text")

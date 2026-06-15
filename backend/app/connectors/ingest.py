@@ -24,8 +24,9 @@ def _hash(payload: dict) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
 
 
-def ingest_raw(connector: SourceConnector, tenant_id: str,
-               entities: list[EntityKind] | None = None) -> dict[str, int]:
+def ingest_raw(
+    connector: SourceConnector, tenant_id: str, entities: list[EntityKind] | None = None
+) -> dict[str, int]:
     """Puxa cada entidade e grava em raw_record (upsert por hash). Retorna
     {entidade: novos/atualizados}."""
     connector.authenticate()
@@ -43,11 +44,16 @@ def ingest_raw(connector: SourceConnector, tenant_id: str,
                     )
                 ).scalar_one_or_none()
                 if existing is None:
-                    s.add(RawRecord(
-                        tenant_id=tenant_id, source=connector.source_name,
-                        entity_type=entity.value, source_external_id=raw.source_external_id,
-                        payload=raw.payload, content_hash=h,
-                    ))
+                    s.add(
+                        RawRecord(
+                            tenant_id=tenant_id,
+                            source=connector.source_name,
+                            entity_type=entity.value,
+                            source_external_id=raw.source_external_id,
+                            payload=raw.payload,
+                            content_hash=h,
+                        )
+                    )
                     changed += 1
                 elif existing.content_hash != h:
                     existing.payload = raw.payload

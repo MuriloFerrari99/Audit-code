@@ -21,8 +21,10 @@ def main() -> None:
     cnpj = sys.argv[1] if len(sys.argv) > 1 else "82845322000104"
     key = get_secret_provider().get_optional("portal/transparencia/api_key")
     if not key:
-        print("SEM CHAVE. Cadastre em portaldatransparencia.gov.br/api-de-dados/cadastrar-email "
-              "e preencha PORTAL_TRANSPARENCIA_KEY no .env.")
+        print(
+            "SEM CHAVE. Cadastre em portaldatransparencia.gov.br/api-de-dados/cadastrar-email "
+            "e preencha PORTAL_TRANSPARENCIA_KEY no .env."
+        )
         return
     with httpx.Client(timeout=25, headers={"chave-api-dados": key}) as c:
         for fonte, path in (("CEIS", "/ceis"), ("CNEP", "/cnep")):

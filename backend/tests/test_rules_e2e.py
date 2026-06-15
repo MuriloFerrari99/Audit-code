@@ -7,6 +7,7 @@ paridade na refatoração.
 
 from __future__ import annotations
 
+import contextlib
 from decimal import Decimal
 
 import pytest
@@ -22,10 +23,8 @@ from scripts.seed_synthetic import TENANT_ID, seed
 
 @pytest.fixture(scope="module", autouse=True)
 def _register():
-    try:
+    with contextlib.suppress(ValueError):  # já registradas no processo
         register_builtin_rules()
-    except ValueError:
-        pass  # já registradas no processo
 
 
 @pytest.fixture
@@ -61,7 +60,7 @@ def test_exposed_amounts(seeded):
         return {f.exposed_amount for f in by_rule.get(rid, [])}
 
     assert Decimal("1000.0000") in amounts("R1")  # (40-30)*100 cimento
-    assert Decimal("800.0000") in amounts("R2")   # (50-42)*100 aço
+    assert Decimal("800.0000") in amounts("R2")  # (50-42)*100 aço
     assert Decimal("2700.0000") in amounts("R4")  # (130-100)*90 brita (medido vs orçado)
     assert Decimal("1000.0000") in amounts("R5")  # 11000-10000
 
@@ -87,7 +86,9 @@ def test_review_creates_ledger(seeded):
         expected = finding.exposed_amount
         review_finding(s, str(TENANT_ID), fid, "accept", "tester@cliente.com")
     with tenant_session(str(TENANT_ID)) as s:
-        status = s.execute(text("SELECT status FROM finding WHERE id = :i"), {"i": fid}).scalar_one()
+        status = s.execute(
+            text("SELECT status FROM finding WHERE id = :i"), {"i": fid}
+        ).scalar_one()
         assert status == FindingStatus.ACCEPTED.value
         validated = s.execute(
             text("SELECT validated_amount FROM value_ledger WHERE finding_id = :i"), {"i": fid}
@@ -106,5 +107,7 @@ def test_human_decision_is_sticky(seeded):
     with tenant_session(str(TENANT_ID)) as s:
         run_all(s, str(TENANT_ID))
     with tenant_session(str(TENANT_ID)) as s:
-        status = s.execute(text("SELECT status FROM finding WHERE id = :i"), {"i": fid}).scalar_one()
+        status = s.execute(
+            text("SELECT status FROM finding WHERE id = :i"), {"i": fid}
+        ).scalar_one()
         assert status == FindingStatus.ACCEPTED.value
