@@ -1,5 +1,7 @@
 # Auditoria de Gastos & Integridade (Spend Intelligence)
 
+[![CI](https://github.com/MuriloFerrari99/Audit-code/actions/workflows/ci.yml/badge.svg)](https://github.com/MuriloFerrari99/Audit-code/actions/workflows/ci.yml)
+
 Plataforma multi-tenant que lê o ERP da empresa (**Sienge** primeiro), **somente leitura**,
 audita 100% das compras continuamente e devolve achados com **evidência + R$**, em 4 dimensões:
 **Preço · Fiscal · Pagamento · Integridade do fornecedor**. Advisory — o humano decide.

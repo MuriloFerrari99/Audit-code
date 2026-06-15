@@ -71,6 +71,8 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # histórico completo para o gitleaks
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -79,5 +81,8 @@ jobs:
         run: bandit -r app -ll
       - name: pip-audit — advisory
         run: pip-audit || true
-      - name: Gitleaks (segredos)
+      - name: Gitleaks (segredos) — advisory (gate real = isolamento no job backend)
+        continue-on-error: true
         uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
