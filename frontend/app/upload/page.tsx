@@ -136,10 +136,10 @@ export default function UploadPage() {
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         {/* NF-e */}
         <Card className="p-5">
-          <h2 className="font-medium">Notas fiscais (NF-e)</h2>
-          <p className="mt-1 text-xs text-ink-soft">Um ou vários arquivos .xml.</p>
+          <h2 className="font-medium">Notas fiscais (NF-e / NFS-e)</h2>
+          <p className="mt-1 text-xs text-ink-soft">Um ou vários arquivos .xml (produto ou serviço).</p>
           <div className="mt-4">
-            <DropZone accept=".xml" multiple hint="arquivos .xml de NF-e" onPick={sendNfe} />
+            <DropZone accept=".xml" multiple hint="arquivos .xml de NF-e ou NFS-e" onPick={sendNfe} />
           </div>
           {busy === "nfe" && <div className="mt-4"><Spinner /></div>}
           {nfe && (

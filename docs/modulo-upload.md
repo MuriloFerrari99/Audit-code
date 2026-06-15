@@ -39,8 +39,9 @@ planilha de lançamentos, sobe, e recebe a auditoria. Sienge vira "um dos conect
 3. ✅ **Endpoint de upload** `POST /upload/nfe` (multipart: 1+ XMLs) → canônico.
 4. ✅ **Regras de retenção** `RET1` (INSS) e `RET2` (ISS) — advisory, confiança média, calibráveis.
 5. ✅ **Parser de planilha** (CSV/XLSX) com auto-detecção de colunas → `Bill` (contas a pagar).
-6. **NFS-e** (ABRASF + adaptadores municipais). — *próximo*
-7. **UI**: tela de upload (arrastar XML/zip + planilha) → auditoria.
+6. ✅ **UI** de upload (`/upload`): arrastar XML + planilha → resumo → rodar auditoria.
+7. ✅ **NFS-e** (ABRASF, tolerante a namespace/variantes) → mesmo canônico; upload auto-detecta NF-e vs NFS-e.
+8. **Adaptadores municipais** de NFS-e fora do ABRASF (conforme aparecerem XMLs reais). — *próximo*
 
 ## Estado atual (migração 0014)
 - `invoice`: + `inss_retention`, `iss_retention`, `is_service`.

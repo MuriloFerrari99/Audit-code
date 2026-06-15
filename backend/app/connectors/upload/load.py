@@ -13,6 +13,7 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy import select
 
 from app.connectors.upload.nfe import parse_nfe
+from app.connectors.upload.nfse import parse_nfse
 from app.connectors.upload.spreadsheet import parse_amount, parse_spreadsheet
 from app.core.db import tenant_session
 from app.core.logging import get_logger
@@ -73,13 +74,21 @@ def _get_or_create_creditor(s, tenant_id: str, cnpj: str | None, nome: str | Non
     return c
 
 
+def _parse_fiscal_xml(content: bytes) -> dict:
+    """Auto-detecta NF-e vs NFS-e. NF-e tem infNFe; senão tenta ABRASF/NFS-e."""
+    try:
+        return parse_nfe(content)
+    except ValueError:
+        return parse_nfse(content)  # pode levantar ValueError -> dead-letter
+
+
 def load_nfe_files(tenant_id: str, files: list[tuple[str, bytes]]) -> dict:
-    """files = [(filename, xml_bytes)]. Retorna resumo + dead_letters."""
+    """files = [(filename, xml_bytes)]. NF-e ou NFS-e. Retorna resumo + dead_letters."""
     summary = {"invoices": 0, "items": 0, "dead_letters": 0}
     with tenant_session(tenant_id) as s:
         for fname, content in files:
             try:
-                d = parse_nfe(content)
+                d = _parse_fiscal_xml(content)
             except Exception as e:  # XML inválido -> dead-letter visível (A-3)
                 s.add(DeadLetter(tenant_id=tenant_id, source="upload", entity_type="invoice",
                                  ref=fname, reason=f"NF-e inválida: {e}"[:500]))
