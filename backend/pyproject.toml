@@ -60,6 +60,8 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# garante que app/ e scripts/ sejam importáveis (rodando `pytest` puro, como no CI)
+pythonpath = ["."]
 
 [build-system]
 requires = ["setuptools>=68"]
